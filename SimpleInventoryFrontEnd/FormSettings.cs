@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
 namespace SimpleInventoryFrontEnd
 {
-    public partial class Form1 : Form
+    public partial class FormSettings : Form
     {
-        public Form1()
+        public FormSettings()
         {
             InitializeComponent();
         }
