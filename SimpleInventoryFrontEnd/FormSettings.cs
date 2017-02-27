@@ -15,5 +15,52 @@ namespace SimpleInventoryFrontEnd
         {
             InitializeComponent();
         }
+
+        void FillComboBox()
+        {
+            comboBoxScannerName.Items.Clear();
+            try
+            {
+                Scaner.Scaner45 searchScanner = new Scaner.Scaner45();
+                for (int i = 0; i < searchScanner.DeviceCount; i++)
+                {
+                    searchScanner.CurrentDeviceNumber = i + 1;
+                    comboBoxScannerName.Items.Add(searchScanner.CurrentDeviceName);
+                }
+
+                comboBoxScannerName.SelectedIndex = comboBoxScannerName.FindStringExact(Properties.Settings.Default.ScannerName);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.Message, "Ошибка получения списка устройств", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                comboBoxScannerName.Items.Clear();
+            }
+        }
+
+        private void FormSettings_Load(object sender, EventArgs e)
+        {
+            FillComboBox();
+        }
+
+        private void buttonShowScannerProperties_Click(object sender, EventArgs e)
+        {
+            Program.scanner.ShowProperties();
+            FillComboBox();
+        }
+
+        private void buttonOK_Click(object sender, EventArgs e)
+        {
+            if (comboBoxScannerName.SelectedIndex == -1)
+                MessageBox.Show("Не выбран сканер штрих-кодов!");
+            else
+            {
+                Properties.Settings.Default.ScannerName = comboBoxScannerName.Text;
+                Properties.Settings.Default.Save();
+                
+                DialogResult = DialogResult.OK;
+
+                Close();
+            }
+        }
     }
 }

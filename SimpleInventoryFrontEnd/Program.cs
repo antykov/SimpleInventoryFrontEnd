@@ -19,18 +19,22 @@ namespace SimpleInventoryFrontEnd
 
         internal delegate int PointerToMethodInvoker();
 
+        static public Scaner.Scaner45 scanner;
+
         [STAThread]
         static void Main()
         {
-            if (!CheckAtolBarcodeReader())
+            if (!CheckAtolBarcodeScanner())
                 return;
+
+            scanner = new Scaner.Scaner45();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainForm());
         }
 
-        static bool CheckAtolBarcodeReader()
+        static bool CheckAtolBarcodeScanner()
         {
             if (Type.GetTypeFromProgID("AddIn.Scaner45") != null)
                 return true;

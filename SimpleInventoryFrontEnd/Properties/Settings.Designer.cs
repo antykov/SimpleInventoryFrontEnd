@@ -26,12 +26,12 @@ namespace SimpleInventoryFrontEnd.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string ScanerDeviceName {
+        public string ScannerName {
             get {
-                return ((string)(this["ScanerDeviceName"]));
+                return ((string)(this["ScannerName"]));
             }
             set {
-                this["ScanerDeviceName"] = value;
+                this["ScannerName"] = value;
             }
         }
     }
