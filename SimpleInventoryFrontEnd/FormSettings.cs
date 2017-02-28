@@ -44,7 +44,7 @@ namespace SimpleInventoryFrontEnd
 
         private void buttonShowScannerProperties_Click(object sender, EventArgs e)
         {
-            Program.scanner.ShowProperties();
+            DataModule.scanner.ShowProperties();
             FillComboBox();
         }
 
