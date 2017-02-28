@@ -84,6 +84,7 @@
             this.openMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
             this.openMenuItem.Size = new System.Drawing.Size(217, 22);
             this.openMenuItem.Text = "Открыть...";
+            this.openMenuItem.Click += new System.EventHandler(this.openMenuItem_Click);
             // 
             // exportMenuItem
             // 
@@ -137,6 +138,7 @@
             this.gridInventory.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.gridInventory.DataSource = this.bindingSource;
             this.gridInventory.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.gridInventory.EditMode = System.Windows.Forms.DataGridViewEditMode.EditOnEnter;
             this.gridInventory.Location = new System.Drawing.Point(0, 24);
             this.gridInventory.MultiSelect = false;
             this.gridInventory.Name = "gridInventory";

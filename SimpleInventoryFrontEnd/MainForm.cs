@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Drawing;
 using System.Text;
@@ -11,8 +12,6 @@ namespace SimpleInventoryFrontEnd
 {
     public partial class MainForm : Form
     {
-        public SQLiteDataAdapter adapter;
-
         void ConnectBarcodeScanner()
         {
             DataModule.scanner.DeviceEnabled = false;
@@ -96,9 +95,11 @@ namespace SimpleInventoryFrontEnd
 
             DataTable table = new DataTable();
 
-            adapter = new SQLiteDataAdapter("SELECT code, barcode, description, unit, quantity, quantity_fact from inventory_items", DataModule.sqliteConnection);
-            adapter.Fill(table);
-            bindingSource.DataSource = table;
+            using (SQLiteDataAdapter adapter = new SQLiteDataAdapter("SELECT rowid, info_id, code, barcode, description, unit, quantity, quantity_fact from inventory_items", DataModule.sqliteConnection))
+            {
+                adapter.Fill(table);
+                bindingSource.DataSource = table;
+            }
 
             gridInventory.AutoGenerateColumns = true;
         }
@@ -110,7 +111,21 @@ namespace SimpleInventoryFrontEnd
 
         private void gridInventory_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            adapter.Update((DataTable)bindingSource.DataSource);
+            if (e.RowIndex == -1 || e.ColumnIndex == -1 || DataModule.rowid_index == -1 || DataModule.info_id_index == -1)
+                return;
+
+            DataModule.UpdateSQLiteRow(
+                (long)gridInventory.Rows[e.RowIndex].Cells[DataModule.rowid_index].Value,
+                (long)gridInventory.Rows[e.RowIndex].Cells[DataModule.info_id_index].Value,
+                gridInventory.Columns[e.ColumnIndex].Name,
+                gridInventory.Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
+        }
+
+        private void openMenuItem_Click(object sender, EventArgs e)
+        {
+            FormSelectExistingInventory formSelect = new FormSelectExistingInventory();
+            if (formSelect.ShowDialog() == DialogResult.OK)
+                UpdateInventoryGrid();
         }
     }
 }

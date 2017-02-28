@@ -18,7 +18,10 @@ namespace SimpleInventoryFrontEnd
         public string Warehouse;
         public string WarehouseCode;
         public DateTime Date;
+        public DateTime LastChange;
         public long ID;
+
+        public string Description;
 
         public InventoryInfo()
         {
@@ -30,15 +33,38 @@ namespace SimpleInventoryFrontEnd
             ID = 0;
         }
 
+        public InventoryInfo(SQLiteDataReader reader)
+        {
+            foreach (var key in reader.GetValues().Keys)
+            {
+                SetValueByName(key.ToString(), reader.GetValues().GetValues(key.ToString())[0]);
+            }
+
+            Description =
+                Company + " (" +
+                Warehouse + ") от " +
+                Date.ToString("dd.MM.yyyy");
+
+            if (!LastChange.Equals(new DateTime()))
+                Description += ", обновление от " + LastChange.ToString("dd.MM.yyyy hh:mm:ss");
+        }
+
+        public override string ToString()
+        {
+            return this.Description;
+        }
+
         public void SetValueByName(string name, string value)
         {
             switch (name.ToUpper())
             {
+                case "ID": Int64.TryParse(value, out ID); break;
                 case "COMPANY": Company = value; break;
                 case "COMPANY_CODE": CompanyCode = value; break;
                 case "WAREHOUSE": Warehouse = value; break;
                 case "WAREHOUSE_CODE": WarehouseCode = value; break;
                 case "DATE": DateTime.TryParse(value, out Date); break;
+                case "LAST_CHANGE": DateTime.TryParse(value, out LastChange); break;
             }
         }
 
@@ -87,6 +113,7 @@ namespace SimpleInventoryFrontEnd
 
     public class DataGridViewColumnAppearance: Object
     {
+        public bool Visible;
         public string HeaderText;
         public DataGridViewAutoSizeColumnMode AutoSizeMode;
         public bool ReadOnly;
@@ -96,6 +123,7 @@ namespace SimpleInventoryFrontEnd
 
         public DataGridViewColumnAppearance()
         {
+            Visible = true;
             AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
             ReadOnly = true;
             Width = 100;
@@ -168,7 +196,7 @@ namespace SimpleInventoryFrontEnd
 
         #endregion
 
-        #region SQLite - общие
+        #region SQLite
 
         static public SQLiteConnection sqliteConnection;
 
@@ -217,6 +245,35 @@ namespace SimpleInventoryFrontEnd
             }
 
             return true;
+        }
+
+        public static void UpdateSQLiteRow(long rowid, long info_id, string column_name, object column_value)
+        {
+            try
+            {
+                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                {
+                    sqliteCommand.CommandText = @"
+                        UPDATE inventory_items
+                        SET " + column_name + @" = @column_value
+                        WHERE rowid = @rowid";
+                    sqliteCommand.Parameters.AddWithValue("column_value", column_value);
+                    sqliteCommand.Parameters.AddWithValue("rowid", rowid);
+                    sqliteCommand.ExecuteNonQuery();
+
+                    sqliteCommand.CommandText = @"
+                        UPDATE inventory_info
+                        SET last_change = @last_change
+                        WHERE id = @info_id";
+                    sqliteCommand.Parameters.AddWithValue("last_change", DateTime.Now.ToString("u"));
+                    sqliteCommand.Parameters.AddWithValue("info_id", info_id);
+                    sqliteCommand.ExecuteNonQuery();
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ошибка обновления БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         #endregion
@@ -421,11 +478,21 @@ namespace SimpleInventoryFrontEnd
 
         #region DataGridView
 
+        public static int rowid_index = -1, info_id_index = -1;
+
         public static Dictionary<string, DataGridViewColumnAppearance> columnsAppearance;
 
         public static void SetDataGridColumnsAppearance()
         {
             columnsAppearance = new Dictionary<string, DataGridViewColumnAppearance>();
+
+            DataGridViewColumnAppearance columnRowid = new DataGridViewColumnAppearance();
+            columnRowid.Visible = false;
+            columnsAppearance.Add("rowid", columnRowid);
+
+            DataGridViewColumnAppearance columnInfoId = new DataGridViewColumnAppearance();
+            columnInfoId.Visible = false;
+            columnsAppearance.Add("info_id", columnInfoId);
 
             DataGridViewColumnAppearance columnCode = new DataGridViewColumnAppearance();
             columnCode.HeaderText = "Код";
@@ -470,12 +537,19 @@ namespace SimpleInventoryFrontEnd
 
             DataGridViewColumnAppearance appearance = columnsAppearance[column.Name];
 
+            column.Visible = appearance.Visible;
             column.HeaderText = appearance.HeaderText;
             column.AutoSizeMode = appearance.AutoSizeMode;
             column.ReadOnly = appearance.ReadOnly;
             column.Width = appearance.Width;
             column.DefaultCellStyle.Format = appearance.Format;
             column.DefaultCellStyle.Alignment = appearance.Alignment;
+
+            switch (column.Name)
+            {
+                case "rowid": rowid_index = column.Index; break;
+                case "info_id": info_id_index = column.Index; break;
+            }
         }
 
         #endregion
