@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SQLite;
 using System.Globalization;
 using System.IO;
@@ -194,7 +196,7 @@ namespace SimpleInventoryFrontEnd
             return true;
         }
 
-        public static void ConnectBarcodeScanner(ToolStripLabel toolLabelScannerConnected)
+        public static void ConnectBarcodeScanner()
         {
             scanner.DeviceEnabled = false;
             if (!String.IsNullOrWhiteSpace(Properties.Settings.Default.ScannerName))
@@ -226,34 +228,57 @@ namespace SimpleInventoryFrontEnd
                 }
             }
 
-            toolLabelScannerConnected.Text = (scannerConnected) ? "Сканер \"" + Properties.Settings.Default.ScannerName + "\" подключен" : "Сканер не подключен";
+            ((ToolStripStatusLabel)formElements["toolLabelScannerConnected"]).Text = (scannerConnected) ? "Сканер \"" + Properties.Settings.Default.ScannerName + "\" подключен" : "Сканер не подключен";
         }
 
         private static void Scanner_DataEvent()
         {
-            if (gridInventory == null || inventoryInfo == null || barcode_index == -1)
+            if (formElements == null || inventoryInfo == null || barcode_index == -1)
                 return;
+
+            BindingSource bindingSource = (BindingSource)formElements["bindingSource"];
+            DataGridView dataGridView = (DataGridView)formElements["gridInventory"];
 
             int position = bindingSource.Find("barcode", scanner.ScanData);
             if (position == -1)
             {
+                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                {
+                    sqliteCommand.CommandText = @"
+                        INSERT INTO inventory_items (info_id, barcode, quantity, quantity_fact) 
+                        VALUES (@info_id, @barcode, 0, 1)";
+                    sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
+                    sqliteCommand.Parameters.AddWithValue("barcode", scanner.ScanData);
+                    sqliteCommand.ExecuteNonQuery();
+
+                    sqliteCommand.CommandText = @"
+                        SELECT rowid 
+                        FROM inventory_items 
+                        WHERE info_id = @info_id AND barcode = @barcode";
+                    using (SQLiteDataReader reader = sqliteCommand.ExecuteReader())
+                    {
+                        if (reader.Read())
+                            UpdateInventoryGrid(reader.GetInt64(0));
+                    }
+                }
+
                 return;
             }
-            else
-                bindingSource.Position = position;
+
+            bindingSource.Position = position;
 
             if (quantity_fact_index == -1)
                 return;
 
-            gridInventory.EditMode = DataGridViewEditMode.EditProgrammatically;
-            gridInventory.CurrentCell = gridInventory.Rows[position].Cells[quantity_fact_index];
-            gridInventory.BeginEdit(true);
-            if (gridInventory.CurrentCell.Value.GetType().IsValueType)
-                gridInventory.CurrentCell.Value = (decimal)gridInventory.CurrentCell.Value + 1;
+            dataGridView.EditMode = DataGridViewEditMode.EditProgrammatically;
+            dataGridView.CurrentCell = dataGridView.Rows[position].Cells[quantity_fact_index];
+            dataGridView.BeginEdit(true);
+            if (dataGridView.CurrentCell.Value.GetType().IsValueType)
+                dataGridView.CurrentCell.Value = (decimal)dataGridView.CurrentCell.Value + 1;
             else
-                gridInventory.CurrentCell.Value = (decimal)1;
-            gridInventory.EndEdit();
-            gridInventory.EditMode = DataGridViewEditMode.EditOnEnter;
+                dataGridView.CurrentCell.Value = (decimal)1;
+            dataGridView.EndEdit();
+            dataGridView.EditMode = DataGridViewEditMode.EditOnEnter;
         }
 
         #endregion
@@ -412,7 +437,7 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
-        public static void UpdateSQLiteRow(long rowid, long info_id, string column_name, object column_value)
+        public static void UpdateSQLiteRow(long rowid, string column_name, object column_value)
         {
             try
             {
@@ -426,12 +451,14 @@ namespace SimpleInventoryFrontEnd
                     sqliteCommand.Parameters.AddWithValue("rowid", rowid);
                     sqliteCommand.ExecuteNonQuery();
 
+                    inventoryInfo.LastChange = DateTime.Now;
+
                     sqliteCommand.CommandText = @"
                         UPDATE inventory_info
                         SET last_change = @last_change
                         WHERE id = @info_id";
-                    sqliteCommand.Parameters.AddWithValue("last_change", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
-                    sqliteCommand.Parameters.AddWithValue("info_id", info_id);
+                    sqliteCommand.Parameters.AddWithValue("last_change", inventoryInfo.LastChange.ToString("yyyy-MM-dd HH:mm:ss"));
+                    sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
                     sqliteCommand.ExecuteNonQuery();
                 }
             }
@@ -443,7 +470,7 @@ namespace SimpleInventoryFrontEnd
 
         #endregion
 
-        #region Чтение файла с данными
+        #region Чтение / запись файла с данными
 
         public static InventoryInfo inventoryInfo = null;
 
@@ -537,13 +564,47 @@ namespace SimpleInventoryFrontEnd
             return true;
         }
 
+        public static void ExportToXML(string file)
+        {
+            try
+            {
+                XmlWriterSettings writerSettings = new XmlWriterSettings();
+                writerSettings.Encoding = Encoding.GetEncoding("windows-1251");
+                writerSettings.Indent = true;
+                using (XmlWriter writer = XmlWriter.Create(file, writerSettings))
+                {
+                    writer.WriteProcessingInstruction("xml", "version = '1.0' encoding = 'windows-1251'");
+
+                    writer.WriteStartElement("inventory_result");
+                    writer.WriteAttributeString("company", inventoryInfo.Company);
+                    writer.WriteAttributeString("company_code", inventoryInfo.CompanyCode);
+                    writer.WriteAttributeString("warehouse", inventoryInfo.Warehouse);
+                    writer.WriteAttributeString("warehouse_code", inventoryInfo.WarehouseCode);
+                    writer.WriteAttributeString("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
+                    writer.WriteAttributeString("last_change", inventoryInfo.LastChange.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                    using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                    {
+
+                    }
+
+                    writer.WriteEndElement();
+
+                    writer.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ошибка экспорта в XML", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         #endregion
 
         #region DataGridView
 
-        public static int rowid_index = -1, info_id_index = -1, barcode_index = -1, quantity_fact_index = -1;
-        public static DataGridView gridInventory = null;
-        public static BindingSource bindingSource = null;
+        public static int rowid_index = -1, barcode_index = -1, quantity_fact_index = -1;
+        public static Hashtable formElements = null;
 
         public static Dictionary<string, DataGridViewColumnAppearance> columnsAppearance;
 
@@ -613,9 +674,48 @@ namespace SimpleInventoryFrontEnd
             switch (column.Name)
             {
                 case "rowid": rowid_index = column.Index; break;
-                case "info_id": info_id_index = column.Index; break;
                 case "barcode": barcode_index = column.Index; break;
                 case "quantity_fact": quantity_fact_index = column.Index; break;
+            }
+        }
+
+        public static void UpdateInventoryGrid(long rowid = -1)
+        {
+            if (formElements == null)
+                return;
+
+            BindingSource bindingSource = (BindingSource)formElements["bindingSource"];
+            DataGridView dataGridView = (DataGridView)formElements["gridInventory"];
+
+            ((ToolStripStatusLabel)formElements["toolLabelInventoryInfo"]).Text =
+                inventoryInfo.Company + " (" +
+                inventoryInfo.Warehouse + ") от " +
+                inventoryInfo.Date.ToString("dd.MM.yyyy");
+
+            DataTable table = new DataTable();
+
+            using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+            {
+                sqliteCommand.CommandText = @"
+                    SELECT rowid, info_id, code, barcode, description, unit, quantity, quantity_fact 
+                    FROM inventory_items
+                    WHERE info_id = @info_id
+                    ORDER BY description";
+                sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
+                using (SQLiteDataAdapter adapter = new SQLiteDataAdapter(sqliteCommand))
+                {
+                    adapter.Fill(table);
+                    bindingSource.DataSource = table;
+                }
+            }
+
+            dataGridView.AutoGenerateColumns = true;
+
+            int position = bindingSource.Find("rowid", rowid);
+            if (position != -1 && quantity_fact_index != -1)
+            {
+                bindingSource.Position = position;
+                dataGridView.CurrentCell = dataGridView.Rows[position].Cells[quantity_fact_index];
             }
         }
 

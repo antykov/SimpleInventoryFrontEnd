@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Drawing;
+using System.Globalization;
+using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
@@ -20,20 +23,23 @@ namespace SimpleInventoryFrontEnd
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            Type dgvType = gridInventory.GetType();
-            PropertyInfo pi = dgvType.GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic);
-            pi.SetValue(gridInventory, true, null);
+            PropertyInfo propertyBuffered = gridInventory.GetType().GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic);
+            propertyBuffered.SetValue(gridInventory, true, null);
 
-            DataModule.gridInventory = gridInventory;
-            DataModule.bindingSource = bindingSource;
-            DataModule.ConnectBarcodeScanner(toolLabelScannerConnected);
+            DataModule.formElements = new Hashtable();
+            DataModule.formElements["gridInventory"] = gridInventory;
+            DataModule.formElements["bindingSource"] = bindingSource;
+            DataModule.formElements["toolLabelScannerConnected"] = toolLabelScannerConnected;
+            DataModule.formElements["toolLabelInventoryInfo"] = toolLabelInventoryInfo;
+
+            DataModule.ConnectBarcodeScanner();
         }
 
         private void settingsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             FormSettings formSettings = new FormSettings();
             if (formSettings.ShowDialog() == DialogResult.OK)
-                DataModule.ConnectBarcodeScanner(toolLabelScannerConnected);
+                DataModule.ConnectBarcodeScanner();
         }
 
         private void importMenuItem_Click(object sender, EventArgs e)
@@ -50,33 +56,7 @@ namespace SimpleInventoryFrontEnd
             if (!DataModule.LoadFile(openDialog.FileName))
                 return;
 
-            UpdateInventoryGrid();
-        }
-
-        void UpdateInventoryGrid()
-        {
-            toolLabelInventoryInfo.Text =
-                DataModule.inventoryInfo.Company + " (" +
-                DataModule.inventoryInfo.Warehouse + ") от " +
-                DataModule.inventoryInfo.Date.ToString("dd.MM.yyyy");
-
-            DataTable table = new DataTable();
-
-            using (SQLiteCommand sqliteCommand = new SQLiteCommand(DataModule.sqliteConnection))
-            {
-                sqliteCommand.CommandText = @"
-                    SELECT rowid, info_id, code, barcode, description, unit, quantity, quantity_fact 
-                    FROM inventory_items
-                    WHERE info_id = @info_id";
-                sqliteCommand.Parameters.AddWithValue("info_id", DataModule.inventoryInfo.ID);
-                using (SQLiteDataAdapter adapter = new SQLiteDataAdapter(sqliteCommand))
-                {
-                    adapter.Fill(table);
-                    bindingSource.DataSource = table;
-                }
-            }
-
-            gridInventory.AutoGenerateColumns = true;
+            DataModule.UpdateInventoryGrid();
         }
 
         private void gridInventory_ColumnAdded(object sender, DataGridViewColumnEventArgs e)
@@ -84,14 +64,30 @@ namespace SimpleInventoryFrontEnd
             DataModule.ApplyDataGridColumnAppearance(e.Column);
         }
 
+        private void gridInventory_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+            // согласно columnsAppearance единственная колонка, доступная для редактирования - количество фактическое
+            // поэтому никаких проверок не делаем
+
+            string errorText = ((string)((DataGridView)sender).Rows[e.RowIndex].Cells[e.ColumnIndex].EditedFormattedValue).Replace(',', '.');
+            decimal result;
+            if (Decimal.TryParse(errorText, System.Globalization.NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out result))
+            {
+                e.Cancel = false;
+                ((DataGridView)sender).Rows[e.RowIndex].Cells[e.ColumnIndex].Value = result;
+            }
+        }
+
         private void gridInventory_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex == -1 || e.ColumnIndex == -1 || DataModule.rowid_index == -1 || DataModule.info_id_index == -1)
+            // согласно columnsAppearance единственная колонка, доступная для редактирования - количество фактическое
+            // поэтому никаких проверок не делаем
+
+            if (e.RowIndex == -1 || e.ColumnIndex == -1 || DataModule.rowid_index == -1)
                 return;
 
             DataModule.UpdateSQLiteRow(
                 (long)gridInventory.Rows[e.RowIndex].Cells[DataModule.rowid_index].Value,
-                (long)gridInventory.Rows[e.RowIndex].Cells[DataModule.info_id_index].Value,
                 gridInventory.Columns[e.ColumnIndex].Name,
                 gridInventory.Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
         }
@@ -100,7 +96,24 @@ namespace SimpleInventoryFrontEnd
         {
             FormSelectExistingInventory formSelect = new FormSelectExistingInventory();
             if (formSelect.ShowDialog() == DialogResult.OK)
-                UpdateInventoryGrid();
+                DataModule.UpdateInventoryGrid();
+        }
+
+        private void exportMenuItem_Click(object sender, EventArgs e)
+        {
+            if (DataModule.inventoryInfo == null)
+                return;
+
+            SaveFileDialog saveDialog = new SaveFileDialog();
+            saveDialog.CheckFileExists = false;
+            saveDialog.Filter = "Файлы xml|*.xml";
+            if (saveDialog.ShowDialog() != DialogResult.OK)
+                return;
+
+            switch (Path.GetExtension(saveDialog.FileName).ToUpper())
+            {
+                case ".XML": DataModule.ExportToXML(saveDialog.FileName); break;
+            }
         }
     }
 }

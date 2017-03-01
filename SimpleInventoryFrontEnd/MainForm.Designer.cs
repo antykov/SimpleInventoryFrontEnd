@@ -91,6 +91,7 @@
             this.exportMenuItem.Name = "exportMenuItem";
             this.exportMenuItem.Size = new System.Drawing.Size(217, 22);
             this.exportMenuItem.Text = "Экспорт...";
+            this.exportMenuItem.Click += new System.EventHandler(this.exportMenuItem_Click);
             // 
             // toolStripSeparator1
             // 
@@ -142,12 +143,14 @@
             this.gridInventory.Location = new System.Drawing.Point(0, 24);
             this.gridInventory.MultiSelect = false;
             this.gridInventory.Name = "gridInventory";
+            this.gridInventory.RowHeadersVisible = false;
             this.gridInventory.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
             this.gridInventory.ShowEditingIcon = false;
             this.gridInventory.Size = new System.Drawing.Size(574, 433);
             this.gridInventory.TabIndex = 2;
             this.gridInventory.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.gridInventory_CellValueChanged);
             this.gridInventory.ColumnAdded += new System.Windows.Forms.DataGridViewColumnEventHandler(this.gridInventory_ColumnAdded);
+            this.gridInventory.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.gridInventory_DataError);
             // 
             // MainForm
             // 

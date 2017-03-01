@@ -25,7 +25,7 @@ namespace SimpleInventoryFrontEnd
                 using (SQLiteCommand sqliteCommand = new SQLiteCommand(DataModule.sqliteConnection))
                 {
                     sqliteCommand.CommandText = @"
-                        SELECT id, company, warehouse, date, last_change
+                        SELECT id, company, company_code, warehouse, warehouse_code, date, last_change
                         FROM inventory_info
                         ORDER BY company, last_change DESC";
                     using (SQLiteDataReader reader = sqliteCommand.ExecuteReader())

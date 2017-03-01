@@ -35,7 +35,7 @@
             // 
             // buttonSelect
             // 
-            this.buttonSelect.Location = new System.Drawing.Point(322, 251);
+            this.buttonSelect.Location = new System.Drawing.Point(337, 251);
             this.buttonSelect.Name = "buttonSelect";
             this.buttonSelect.Size = new System.Drawing.Size(75, 23);
             this.buttonSelect.TabIndex = 1;
@@ -46,7 +46,7 @@
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(400, 251);
+            this.buttonCancel.Location = new System.Drawing.Point(415, 251);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 2;
@@ -62,7 +62,7 @@
             this.listViewInventory.Name = "listViewInventory";
             this.listViewInventory.Size = new System.Drawing.Size(490, 245);
             this.listViewInventory.TabIndex = 3;
-            this.listViewInventory.TileSize = new System.Drawing.Size(470, 30);
+            this.listViewInventory.TileSize = new System.Drawing.Size(470, 20);
             this.listViewInventory.UseCompatibleStateImageBehavior = false;
             this.listViewInventory.View = System.Windows.Forms.View.Tile;
             this.listViewInventory.DoubleClick += new System.EventHandler(this.listViewInventory_DoubleClick);
