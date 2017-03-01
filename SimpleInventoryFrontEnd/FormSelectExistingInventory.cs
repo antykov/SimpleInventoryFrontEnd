@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -26,12 +27,26 @@ namespace SimpleInventoryFrontEnd
                     sqliteCommand.CommandText = @"
                         SELECT id, company, warehouse, date, last_change
                         FROM inventory_info
-                        ORDER BY last_change DESC";
+                        ORDER BY company, last_change DESC";
                     using (SQLiteDataReader reader = sqliteCommand.ExecuteReader())
                     {
+                        Hashtable listViewGroups = new Hashtable();
+
                         while (reader.Read())
                         {
-                            listBoxInventory.Items.Add(new InventoryInfo(reader));
+                            InventoryInfo info = new InventoryInfo(reader);
+
+                            if (!listViewGroups.ContainsKey(info.Company))
+                            {
+                                ListViewGroup group = new ListViewGroup(info.Company);
+                                listViewInventory.Groups.Add(group);
+
+                                listViewGroups[info.Company] = group;
+                            }
+
+                            ListViewItem item = new ListViewItem(info.Description, (ListViewGroup)listViewGroups[info.Company]);
+                            item.Tag = info;
+                            listViewInventory.Items.Add(item);
                         }
                     }
                 }
@@ -43,7 +58,7 @@ namespace SimpleInventoryFrontEnd
                 Close();
             }
 
-            if (listBoxInventory.Items.Count == 0)
+            if (listViewInventory.Items.Count == 0)
             {
                 MessageBox.Show("Отсутствуют сохраненные инвентаризации!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.Cancel;
@@ -51,7 +66,7 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
-        private void listBoxInventory_DoubleClick(object sender, EventArgs e)
+        private void listViewInventory_DoubleClick(object sender, EventArgs e)
         {
             SelectInventory();
         }
@@ -63,10 +78,10 @@ namespace SimpleInventoryFrontEnd
 
         void SelectInventory()
         {
-            if (listBoxInventory.SelectedItem == null)
+            if (listViewInventory.SelectedItems.Count == 0)
                 return;
 
-            DataModule.inventoryInfo = (InventoryInfo)listBoxInventory.SelectedItem;
+            DataModule.inventoryInfo = (InventoryInfo)listViewInventory.SelectedItems[0].Tag;
             DialogResult = DialogResult.OK;
             Close();
         }

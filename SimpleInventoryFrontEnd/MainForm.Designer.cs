@@ -142,6 +142,7 @@
             this.gridInventory.Location = new System.Drawing.Point(0, 24);
             this.gridInventory.MultiSelect = false;
             this.gridInventory.Name = "gridInventory";
+            this.gridInventory.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
             this.gridInventory.ShowEditingIcon = false;
             this.gridInventory.Size = new System.Drawing.Size(574, 433);
             this.gridInventory.TabIndex = 2;

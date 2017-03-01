@@ -21,6 +21,7 @@ namespace SimpleInventoryFrontEnd
         public DateTime LastChange;
         public long ID;
 
+        public string FullDescription;
         public string Description;
 
         public InventoryInfo()
@@ -40,18 +41,17 @@ namespace SimpleInventoryFrontEnd
                 SetValueByName(key.ToString(), reader.GetValues().GetValues(key.ToString())[0]);
             }
 
-            Description =
-                Company + " (" +
-                Warehouse + ") от " +
-                Date.ToString("dd.MM.yyyy");
-
+            string s_last_change = "";
             if (!LastChange.Equals(new DateTime()))
-                Description += ", обновление от " + LastChange.ToString("dd.MM.yyyy hh:mm:ss");
+                s_last_change = ", обновление от " + LastChange.ToString("dd.MM.yyyy HH:mm:ss");
+
+            Description = Warehouse + " от " + Date.ToString("dd.MM.yyyy") + s_last_change;
+            FullDescription = Company + " (" + Warehouse + ") от " + Date.ToString("dd.MM.yyyy") + s_last_change;
         }
 
         public override string ToString()
         {
-            return this.Description;
+            return this.FullDescription;
         }
 
         public void SetValueByName(string name, string value)
@@ -194,6 +194,68 @@ namespace SimpleInventoryFrontEnd
             return true;
         }
 
+        public static void ConnectBarcodeScanner(ToolStripLabel toolLabelScannerConnected)
+        {
+            scanner.DeviceEnabled = false;
+            if (!String.IsNullOrWhiteSpace(Properties.Settings.Default.ScannerName))
+            {
+                int scannerIndex = 0;
+                for (int i = 0; i < scanner.DeviceCount; i++)
+                {
+                    scanner.CurrentDeviceNumber = i + 1;
+                    if (scanner.CurrentDeviceName.Equals(Properties.Settings.Default.ScannerName))
+                    {
+                        scannerIndex = i + 1;
+                        break;
+                    }
+                }
+                if (scannerIndex > 0)
+                {
+                    try
+                    {
+                        scanner.CurrentDeviceNumber = scannerIndex;
+                        scanner.DataEvent += Scanner_DataEvent;
+                        scanner.DeviceEnabled = true;
+                        scannerConnected = true;
+                    }
+                    catch (Exception e)
+                    {
+                        MessageBox.Show("Ошибка подключения сканера штрих-кодов:\n" + e.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        scanner.DeviceEnabled = false;
+                    }
+                }
+            }
+
+            toolLabelScannerConnected.Text = (scannerConnected) ? "Сканер \"" + Properties.Settings.Default.ScannerName + "\" подключен" : "Сканер не подключен";
+        }
+
+        private static void Scanner_DataEvent()
+        {
+            if (gridInventory == null || inventoryInfo == null || barcode_index == -1)
+                return;
+
+            int position = bindingSource.Find("barcode", scanner.ScanData);
+            if (position == -1)
+            {
+                return;
+            }
+            else
+                bindingSource.Position = position;
+
+            if (quantity_fact_index == -1)
+                return;
+
+            gridInventory.EditMode = DataGridViewEditMode.EditProgrammatically;
+            gridInventory.CurrentCell = gridInventory.Rows[position].Cells[quantity_fact_index];
+            gridInventory.BeginEdit(true);
+            if (gridInventory.CurrentCell.Value.GetType().IsValueType)
+                gridInventory.CurrentCell.Value = (decimal)gridInventory.CurrentCell.Value + 1;
+            else
+                gridInventory.CurrentCell.Value = (decimal)1;
+            gridInventory.EndEdit();
+            gridInventory.EditMode = DataGridViewEditMode.EditOnEnter;
+        }
+
         #endregion
 
         #region SQLite
@@ -238,130 +300,6 @@ namespace SimpleInventoryFrontEnd
                     sqliteCommand.ExecuteNonQuery();
                 }
                 catch (SQLiteException e)
-                {
-                    MessageBox.Show(e.Message, "Ошибка работы с БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        public static void UpdateSQLiteRow(long rowid, long info_id, string column_name, object column_value)
-        {
-            try
-            {
-                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
-                {
-                    sqliteCommand.CommandText = @"
-                        UPDATE inventory_items
-                        SET " + column_name + @" = @column_value
-                        WHERE rowid = @rowid";
-                    sqliteCommand.Parameters.AddWithValue("column_value", column_value);
-                    sqliteCommand.Parameters.AddWithValue("rowid", rowid);
-                    sqliteCommand.ExecuteNonQuery();
-
-                    sqliteCommand.CommandText = @"
-                        UPDATE inventory_info
-                        SET last_change = @last_change
-                        WHERE id = @info_id";
-                    sqliteCommand.Parameters.AddWithValue("last_change", DateTime.Now.ToString("u"));
-                    sqliteCommand.Parameters.AddWithValue("info_id", info_id);
-                    sqliteCommand.ExecuteNonQuery();
-                }
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message, "Ошибка обновления БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        #endregion
-
-        #region Данные с инвентаризацией
-
-        public static InventoryInfo inventoryInfo;
-        public static SortedList<string, InventoryItem> inventoryItems;
-
-        static InventoryItem ReadInventoryItem(XmlReader reader)
-        {
-            InventoryItem item = new InventoryItem();
-
-            string name;
-
-            while (reader.Read())
-            {
-                if (reader.Name == "item" && reader.NodeType == XmlNodeType.EndElement)
-                    break;
-
-                if (reader.NodeType == XmlNodeType.Element)
-                {
-                    name = reader.Name;
-                    if (reader.Read() && reader.NodeType == XmlNodeType.Text)
-                        item.SetValueByName(name, reader.Value);
-                }
-            }
-
-            if (String.IsNullOrWhiteSpace(item.Code))
-                return null;
-
-            return item;
-        }
-
-        public static bool LoadFile(string file)
-        {
-            inventoryInfo = new InventoryInfo();
-            inventoryItems = new SortedList<string, InventoryItem>();
-
-            try
-            {
-                using (XmlReader reader = XmlReader.Create(file))
-                {
-                    if (reader.MoveToContent() != XmlNodeType.Element || reader.Name != "inventory")
-                        throw new Exception("В выбранном файле отсутствует информация по инвентаризации!");
-
-                    if (reader.HasAttributes)
-                    {
-                        for (int i = 0; i < reader.AttributeCount; i++)
-                        {
-                            reader.MoveToAttribute(i);
-                            inventoryInfo.SetValueByName(reader.Name, reader.Value);
-                        }
-                        reader.MoveToElement();
-                    }
-                    if (!inventoryInfo.CheckMandatoryFields())
-                        throw new Exception("В выбранном файле отсутствуют атрибуты, описывающие инвентаризацию!");
-
-                    if (reader.ReadToFollowing("item"))
-                    {
-                        do
-                        {
-                            InventoryItem item = ReadInventoryItem(reader);
-                            if (item != null)
-                                inventoryItems.Add(item.Description + " / " + item.Code, item);
-                        } while (reader.ReadToFollowing("item"));
-                    }
-                }
-
-                if (inventoryItems.Count == 0)
-                    throw new Exception("В выбранном файле отсутствуют строки с номенклатурой!");
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message, "Ошибка чтения файла", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-
-            using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
-            {
-                try
-                {
-                    if (!PrepareDBtoImportInventoryData(sqliteCommand))
-                        return false;
-
-                    DoImportInventoryDataToDB(sqliteCommand);
-                }
-                catch (Exception e)
                 {
                     MessageBox.Show(e.Message, "Ошибка работы с БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
@@ -474,11 +412,138 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
+        public static void UpdateSQLiteRow(long rowid, long info_id, string column_name, object column_value)
+        {
+            try
+            {
+                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                {
+                    sqliteCommand.CommandText = @"
+                        UPDATE inventory_items
+                        SET " + column_name + @" = @column_value
+                        WHERE rowid = @rowid";
+                    sqliteCommand.Parameters.AddWithValue("column_value", column_value);
+                    sqliteCommand.Parameters.AddWithValue("rowid", rowid);
+                    sqliteCommand.ExecuteNonQuery();
+
+                    sqliteCommand.CommandText = @"
+                        UPDATE inventory_info
+                        SET last_change = @last_change
+                        WHERE id = @info_id";
+                    sqliteCommand.Parameters.AddWithValue("last_change", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                    sqliteCommand.Parameters.AddWithValue("info_id", info_id);
+                    sqliteCommand.ExecuteNonQuery();
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ошибка обновления БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        #endregion
+
+        #region Чтение файла с данными
+
+        public static InventoryInfo inventoryInfo = null;
+
+        static SortedList<string, InventoryItem> inventoryItems;
+
+        static InventoryItem ReadInventoryItem(XmlReader reader)
+        {
+            InventoryItem item = new InventoryItem();
+
+            string name;
+
+            while (reader.Read())
+            {
+                if (reader.Name == "item" && reader.NodeType == XmlNodeType.EndElement)
+                    break;
+
+                if (reader.NodeType == XmlNodeType.Element)
+                {
+                    name = reader.Name;
+                    if (reader.Read() && reader.NodeType == XmlNodeType.Text)
+                        item.SetValueByName(name, reader.Value);
+                }
+            }
+
+            if (String.IsNullOrWhiteSpace(item.Code))
+                return null;
+
+            return item;
+        }
+
+        public static bool LoadFile(string file)
+        {
+            inventoryInfo = new InventoryInfo();
+            inventoryItems = new SortedList<string, InventoryItem>();
+
+            try
+            {
+                using (XmlReader reader = XmlReader.Create(file))
+                {
+                    if (reader.MoveToContent() != XmlNodeType.Element || reader.Name != "inventory")
+                        throw new Exception("В выбранном файле отсутствует информация по инвентаризации!");
+
+                    if (reader.HasAttributes)
+                    {
+                        for (int i = 0; i < reader.AttributeCount; i++)
+                        {
+                            reader.MoveToAttribute(i);
+                            inventoryInfo.SetValueByName(reader.Name, reader.Value);
+                        }
+                        reader.MoveToElement();
+                    }
+                    if (!inventoryInfo.CheckMandatoryFields())
+                        throw new Exception("В выбранном файле отсутствуют атрибуты, описывающие инвентаризацию!");
+
+                    if (reader.ReadToFollowing("item"))
+                    {
+                        do
+                        {
+                            InventoryItem item = ReadInventoryItem(reader);
+                            if (item != null)
+                                inventoryItems.Add(item.Description + " / " + item.Code, item);
+                        } while (reader.ReadToFollowing("item"));
+                    }
+                }
+
+                if (inventoryItems.Count == 0)
+                    throw new Exception("В выбранном файле отсутствуют строки с номенклатурой!");
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ошибка чтения файла", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+            {
+                try
+                {
+                    if (!PrepareDBtoImportInventoryData(sqliteCommand))
+                        return false;
+
+                    DoImportInventoryDataToDB(sqliteCommand);
+                }
+                catch (Exception e)
+                {
+                    MessageBox.Show(e.Message, "Ошибка работы с БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         #endregion
 
         #region DataGridView
 
-        public static int rowid_index = -1, info_id_index = -1;
+        public static int rowid_index = -1, info_id_index = -1, barcode_index = -1, quantity_fact_index = -1;
+        public static DataGridView gridInventory = null;
+        public static BindingSource bindingSource = null;
 
         public static Dictionary<string, DataGridViewColumnAppearance> columnsAppearance;
 
@@ -549,6 +614,8 @@ namespace SimpleInventoryFrontEnd
             {
                 case "rowid": rowid_index = column.Index; break;
                 case "info_id": info_id_index = column.Index; break;
+                case "barcode": barcode_index = column.Index; break;
+                case "quantity_fact": quantity_fact_index = column.Index; break;
             }
         }
 

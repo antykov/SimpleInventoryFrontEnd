@@ -28,23 +28,14 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.listBoxInventory = new System.Windows.Forms.ListBox();
             this.buttonSelect = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
+            this.listViewInventory = new System.Windows.Forms.ListView();
             this.SuspendLayout();
-            // 
-            // listBoxInventory
-            // 
-            this.listBoxInventory.FormattingEnabled = true;
-            this.listBoxInventory.Location = new System.Drawing.Point(12, 12);
-            this.listBoxInventory.Name = "listBoxInventory";
-            this.listBoxInventory.Size = new System.Drawing.Size(642, 251);
-            this.listBoxInventory.TabIndex = 0;
-            this.listBoxInventory.DoubleClick += new System.EventHandler(this.listBoxInventory_DoubleClick);
             // 
             // buttonSelect
             // 
-            this.buttonSelect.Location = new System.Drawing.Point(501, 269);
+            this.buttonSelect.Location = new System.Drawing.Point(322, 251);
             this.buttonSelect.Name = "buttonSelect";
             this.buttonSelect.Size = new System.Drawing.Size(75, 23);
             this.buttonSelect.TabIndex = 1;
@@ -55,22 +46,36 @@
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(579, 269);
+            this.buttonCancel.Location = new System.Drawing.Point(400, 251);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 2;
             this.buttonCancel.Text = "Отмена";
             this.buttonCancel.UseVisualStyleBackColor = true;
             // 
+            // listViewInventory
+            // 
+            this.listViewInventory.Dock = System.Windows.Forms.DockStyle.Top;
+            this.listViewInventory.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
+            this.listViewInventory.Location = new System.Drawing.Point(0, 0);
+            this.listViewInventory.MultiSelect = false;
+            this.listViewInventory.Name = "listViewInventory";
+            this.listViewInventory.Size = new System.Drawing.Size(490, 245);
+            this.listViewInventory.TabIndex = 3;
+            this.listViewInventory.TileSize = new System.Drawing.Size(470, 30);
+            this.listViewInventory.UseCompatibleStateImageBehavior = false;
+            this.listViewInventory.View = System.Windows.Forms.View.Tile;
+            this.listViewInventory.DoubleClick += new System.EventHandler(this.listViewInventory_DoubleClick);
+            // 
             // FormSelectExistingInventory
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.buttonCancel;
-            this.ClientSize = new System.Drawing.Size(666, 298);
+            this.ClientSize = new System.Drawing.Size(490, 279);
+            this.Controls.Add(this.listViewInventory);
             this.Controls.Add(this.buttonCancel);
             this.Controls.Add(this.buttonSelect);
-            this.Controls.Add(this.listBoxInventory);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Name = "FormSelectExistingInventory";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
@@ -81,9 +86,8 @@
         }
 
         #endregion
-
-        private System.Windows.Forms.ListBox listBoxInventory;
         private System.Windows.Forms.Button buttonSelect;
         private System.Windows.Forms.Button buttonCancel;
+        private System.Windows.Forms.ListView listViewInventory;
     }
 }

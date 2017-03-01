@@ -5,6 +5,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Data.SQLite;
 using System.Drawing;
+using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 
@@ -12,46 +13,6 @@ namespace SimpleInventoryFrontEnd
 {
     public partial class MainForm : Form
     {
-        void ConnectBarcodeScanner()
-        {
-            DataModule.scanner.DeviceEnabled = false;
-            if (!String.IsNullOrWhiteSpace(Properties.Settings.Default.ScannerName))
-            {
-                int scannerIndex = 0;
-                for (int i = 0; i < DataModule.scanner.DeviceCount; i++)
-                {
-                    DataModule.scanner.CurrentDeviceNumber = i + 1;
-                    if (DataModule.scanner.CurrentDeviceName.Equals(Properties.Settings.Default.ScannerName))
-                    {
-                        scannerIndex = i + 1;
-                        break;
-                    }
-                }
-                if (scannerIndex > 0)
-                {
-                    try
-                    {
-                        DataModule.scanner.CurrentDeviceNumber = scannerIndex;
-                        DataModule.scanner.DataEvent += Scanner_DataEvent;
-                        DataModule.scanner.DeviceEnabled = true;
-                        DataModule.scannerConnected = true;
-                    }
-                    catch (Exception e)
-                    {
-                        MessageBox.Show("Ошибка подключения сканера штрих-кодов:\n" + e.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        DataModule.scanner.DeviceEnabled = false;
-                    }
-                }
-            }
-
-            toolLabelScannerConnected.Text = (DataModule.scannerConnected) ? "Сканер \"" + Properties.Settings.Default.ScannerName + "\" подключен" : "Сканер не подключен";
-        }
-
-        private void Scanner_DataEvent()
-        {
-            throw new NotImplementedException();
-        }
-
         public MainForm()
         {
             InitializeComponent();
@@ -59,14 +20,20 @@ namespace SimpleInventoryFrontEnd
 
         private void MainForm_Load(object sender, EventArgs e)
         {
-            ConnectBarcodeScanner();
+            Type dgvType = gridInventory.GetType();
+            PropertyInfo pi = dgvType.GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic);
+            pi.SetValue(gridInventory, true, null);
+
+            DataModule.gridInventory = gridInventory;
+            DataModule.bindingSource = bindingSource;
+            DataModule.ConnectBarcodeScanner(toolLabelScannerConnected);
         }
 
         private void settingsToolStripMenuItem_Click(object sender, EventArgs e)
         {
             FormSettings formSettings = new FormSettings();
             if (formSettings.ShowDialog() == DialogResult.OK)
-                ConnectBarcodeScanner();
+                DataModule.ConnectBarcodeScanner(toolLabelScannerConnected);
         }
 
         private void importMenuItem_Click(object sender, EventArgs e)
@@ -86,7 +53,7 @@ namespace SimpleInventoryFrontEnd
             UpdateInventoryGrid();
         }
 
-        private void UpdateInventoryGrid()
+        void UpdateInventoryGrid()
         {
             toolLabelInventoryInfo.Text =
                 DataModule.inventoryInfo.Company + " (" +
@@ -95,10 +62,18 @@ namespace SimpleInventoryFrontEnd
 
             DataTable table = new DataTable();
 
-            using (SQLiteDataAdapter adapter = new SQLiteDataAdapter("SELECT rowid, info_id, code, barcode, description, unit, quantity, quantity_fact from inventory_items", DataModule.sqliteConnection))
+            using (SQLiteCommand sqliteCommand = new SQLiteCommand(DataModule.sqliteConnection))
             {
-                adapter.Fill(table);
-                bindingSource.DataSource = table;
+                sqliteCommand.CommandText = @"
+                    SELECT rowid, info_id, code, barcode, description, unit, quantity, quantity_fact 
+                    FROM inventory_items
+                    WHERE info_id = @info_id";
+                sqliteCommand.Parameters.AddWithValue("info_id", DataModule.inventoryInfo.ID);
+                using (SQLiteDataAdapter adapter = new SQLiteDataAdapter(sqliteCommand))
+                {
+                    adapter.Fill(table);
+                    bindingSource.DataSource = table;
+                }
             }
 
             gridInventory.AutoGenerateColumns = true;
