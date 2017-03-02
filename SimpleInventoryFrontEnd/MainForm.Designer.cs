@@ -41,6 +41,8 @@
             this.toolLabelInventoryInfo = new System.Windows.Forms.ToolStripStatusLabel();
             this.bindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.gridInventory = new System.Windows.Forms.DataGridView();
+            this.timerQuickSearch = new System.Windows.Forms.Timer(this.components);
+            this.toolLabelQuickSearch = new System.Windows.Forms.ToolStripStatusLabel();
             this.menuStripMain.SuspendLayout();
             this.statusStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource)).BeginInit();
@@ -53,7 +55,7 @@
             this.настройкиToolStripMenuItem});
             this.menuStripMain.Location = new System.Drawing.Point(0, 0);
             this.menuStripMain.Name = "menuStripMain";
-            this.menuStripMain.Size = new System.Drawing.Size(574, 24);
+            this.menuStripMain.Size = new System.Drawing.Size(968, 24);
             this.menuStripMain.TabIndex = 0;
             this.menuStripMain.Text = "menuStrip1";
             // 
@@ -111,10 +113,11 @@
             this.statusStripMain.GripStyle = System.Windows.Forms.ToolStripGripStyle.Visible;
             this.statusStripMain.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.toolLabelScannerConnected,
-            this.toolLabelInventoryInfo});
-            this.statusStripMain.Location = new System.Drawing.Point(0, 457);
+            this.toolLabelInventoryInfo,
+            this.toolLabelQuickSearch});
+            this.statusStripMain.Location = new System.Drawing.Point(0, 612);
             this.statusStripMain.Name = "statusStripMain";
-            this.statusStripMain.Size = new System.Drawing.Size(574, 24);
+            this.statusStripMain.Size = new System.Drawing.Size(968, 24);
             this.statusStripMain.TabIndex = 1;
             // 
             // toolLabelScannerConnected
@@ -126,8 +129,9 @@
             // 
             // toolLabelInventoryInfo
             // 
+            this.toolLabelInventoryInfo.BorderSides = System.Windows.Forms.ToolStripStatusLabelBorderSides.Right;
             this.toolLabelInventoryInfo.Name = "toolLabelInventoryInfo";
-            this.toolLabelInventoryInfo.Size = new System.Drawing.Size(239, 19);
+            this.toolLabelInventoryInfo.Size = new System.Drawing.Size(243, 19);
             this.toolLabelInventoryInfo.Text = "Данные по инвентаризации не загружены";
             // 
             // gridInventory
@@ -146,15 +150,28 @@
             this.gridInventory.RowHeadersVisible = false;
             this.gridInventory.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
             this.gridInventory.ShowEditingIcon = false;
-            this.gridInventory.Size = new System.Drawing.Size(574, 433);
+            this.gridInventory.Size = new System.Drawing.Size(968, 588);
             this.gridInventory.TabIndex = 2;
             this.gridInventory.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.gridInventory_CellValueChanged);
             this.gridInventory.ColumnAdded += new System.Windows.Forms.DataGridViewColumnEventHandler(this.gridInventory_ColumnAdded);
             this.gridInventory.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.gridInventory_DataError);
+            this.gridInventory.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.gridInventory_KeyPress);
+            this.gridInventory.KeyUp += new System.Windows.Forms.KeyEventHandler(this.gridInventory_KeyUp);
+            // 
+            // timerQuickSearch
+            // 
+            this.timerQuickSearch.Interval = 5000;
+            this.timerQuickSearch.Tick += new System.EventHandler(this.timerQuickSearch_Tick);
+            // 
+            // toolLabelQuickSearch
+            // 
+            this.toolLabelQuickSearch.Name = "toolLabelQuickSearch";
+            this.toolLabelQuickSearch.Size = new System.Drawing.Size(108, 19);
+            this.toolLabelQuickSearch.Text = "БЫСТРЫЙ ПОИСК";
             // 
             // MainForm
             // 
-            this.ClientSize = new System.Drawing.Size(574, 481);
+            this.ClientSize = new System.Drawing.Size(968, 636);
             this.Controls.Add(this.gridInventory);
             this.Controls.Add(this.statusStripMain);
             this.Controls.Add(this.menuStripMain);
@@ -187,6 +204,8 @@
         private System.Windows.Forms.ToolStripStatusLabel toolLabelInventoryInfo;
         private System.Windows.Forms.BindingSource bindingSource;
         private System.Windows.Forms.DataGridView gridInventory;
+        private System.Windows.Forms.Timer timerQuickSearch;
+        private System.Windows.Forms.ToolStripStatusLabel toolLabelQuickSearch;
     }
 }
 

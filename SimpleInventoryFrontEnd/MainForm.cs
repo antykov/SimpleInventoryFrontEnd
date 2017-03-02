@@ -16,6 +16,9 @@ namespace SimpleInventoryFrontEnd
 {
     public partial class MainForm : Form
     {
+        string quickSearchBuffer;
+        int quickSearchColumnIndex;
+
         public MainForm()
         {
             InitializeComponent();
@@ -25,6 +28,8 @@ namespace SimpleInventoryFrontEnd
         {
             PropertyInfo propertyBuffered = gridInventory.GetType().GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic);
             propertyBuffered.SetValue(gridInventory, true, null);
+
+            toolLabelQuickSearch.Text = "";
 
             DataModule.formElements = new Hashtable();
             DataModule.formElements["gridInventory"] = gridInventory;
@@ -66,8 +71,8 @@ namespace SimpleInventoryFrontEnd
 
         private void gridInventory_DataError(object sender, DataGridViewDataErrorEventArgs e)
         {
-            // согласно columnsAppearance единственная колонка, доступная для редактирования - количество фактическое
-            // поэтому никаких проверок не делаем
+            if (e.ColumnIndex != DataModule.quantity_fact_index)
+                return;
 
             string errorText = ((string)((DataGridView)sender).Rows[e.RowIndex].Cells[e.ColumnIndex].EditedFormattedValue).Replace(',', '.');
             decimal result;
@@ -80,9 +85,6 @@ namespace SimpleInventoryFrontEnd
 
         private void gridInventory_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            // согласно columnsAppearance единственная колонка, доступная для редактирования - количество фактическое
-            // поэтому никаких проверок не делаем
-
             if (e.RowIndex == -1 || e.ColumnIndex == -1 || DataModule.rowid_index == -1)
                 return;
 
@@ -114,6 +116,90 @@ namespace SimpleInventoryFrontEnd
             {
                 case ".XML": DataModule.ExportToXML(saveDialog.FileName); break;
             }
+        }
+
+        private void gridInventory_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (DataModule.inventoryInfo == null || gridInventory.CurrentCell == null)
+                return;
+
+            if (!timerQuickSearch.Enabled)
+            {
+                quickSearchColumnIndex = gridInventory.CurrentCell.ColumnIndex;
+                timerQuickSearch.Enabled = true;
+            }
+
+            if (quickSearchColumnIndex != gridInventory.CurrentCell.ColumnIndex)
+            {
+                quickSearchColumnIndex = gridInventory.CurrentCell.ColumnIndex;
+                quickSearchBuffer = "";
+            }
+
+            gridInventory_SelectQuickSearchRow(quickSearchBuffer + e.KeyChar);
+        }
+
+        private void gridInventory_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Back)
+            {
+                if (quickSearchBuffer == "")
+                    return;
+
+                gridInventory_SelectQuickSearchRow(quickSearchBuffer.Substring(0, quickSearchBuffer.Length - 1));
+
+            } else if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Return || 
+                       e.KeyCode == Keys.Prior || e.KeyCode == Keys.PageUp ||
+                       e.KeyCode == Keys.Next || e.KeyCode == Keys.PageDown ||
+                       e.KeyCode == Keys.End ||  e.KeyCode == Keys.Home || 
+                       e.KeyCode == Keys.Left || e.KeyCode == Keys.Right || 
+                       e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)
+            {
+                timerQuickSearch_Tick(null, null);
+
+            } else if (e.KeyCode == Keys.Add || (e.KeyCode == Keys.Oemplus && e.Shift) || 
+                       e.KeyCode == Keys.Subtract || (e.KeyCode == Keys.OemMinus && e.Shift))
+            {
+                timerQuickSearch_Tick(null, null);
+
+                if (DataModule.quantity_fact_index == -1)
+                    return;
+
+                int sign = (e.KeyCode == Keys.Add || (e.KeyCode == Keys.Oemplus && e.Shift)) ? 1 : -1;
+
+                gridInventory.EditMode = DataGridViewEditMode.EditProgrammatically;
+                gridInventory.CurrentCell = gridInventory.Rows[gridInventory.CurrentCell.RowIndex].Cells[DataModule.quantity_fact_index];
+                gridInventory.BeginEdit(true);
+                if (gridInventory.CurrentCell.Value.GetType().IsValueType)
+                    gridInventory.CurrentCell.Value = Math.Max((decimal)gridInventory.CurrentCell.Value + (sign * 1), 0);
+                else if (sign == 1)
+                    gridInventory.CurrentCell.Value = (decimal)1;
+                gridInventory.EndEdit();
+                gridInventory.EditMode = DataGridViewEditMode.EditOnEnter;
+
+                gridInventory.CurrentCell = gridInventory.Rows[gridInventory.CurrentCell.RowIndex].Cells[quickSearchColumnIndex];
+            }
+        }
+
+        private void gridInventory_SelectQuickSearchRow(string newQuickSearchBuffer)
+        {
+            int searchPos = DataModule.FindRow(quickSearchColumnIndex, newQuickSearchBuffer);
+            if (searchPos != -1)
+            {
+                timerQuickSearch.Enabled = false;
+                timerQuickSearch.Enabled = true;
+
+                gridInventory.CurrentCell = gridInventory.Rows[searchPos].Cells[quickSearchColumnIndex];
+
+                quickSearchBuffer = newQuickSearchBuffer;
+                toolLabelQuickSearch.Text = "Быстрый поиск: " + quickSearchBuffer.ToUpper();
+            }
+        }
+
+        private void timerQuickSearch_Tick(object sender, EventArgs e)
+        {
+            timerQuickSearch.Enabled = false;
+            quickSearchBuffer = "";
+            toolLabelQuickSearch.Text = "";
         }
     }
 }

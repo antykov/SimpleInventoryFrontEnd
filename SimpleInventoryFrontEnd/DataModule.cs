@@ -418,8 +418,8 @@ namespace SimpleInventoryFrontEnd
                 {
                     sqliteCommand.CommandText = @"
                         INSERT INTO 
-                            inventory_items (info_id, code, description, unit, barcode, quantity)
-                        VALUES (@info_id, @code, @description, @unit, @barcode, @quantity)";
+                            inventory_items (info_id, code, description, unit, barcode, quantity, quantity_fact)
+                        VALUES (@info_id, @code, @description, @unit, @barcode, @quantity, 0)";
                     sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
                     sqliteCommand.Parameters.AddWithValue("code", item.Value.Code);
                     sqliteCommand.Parameters.AddWithValue("description", item.Value.Description);
@@ -583,10 +583,32 @@ namespace SimpleInventoryFrontEnd
                     writer.WriteAttributeString("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
                     writer.WriteAttributeString("last_change", inventoryInfo.LastChange.ToString("yyyy-MM-dd HH:mm:ss"));
 
+                    writer.WriteStartElement("items");
+
                     using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
                     {
-
+                        sqliteCommand.CommandText = @"
+                            SELECT code, barcode, description, unit, quantity, quantity_fact
+                            FROM inventory_items
+                            WHERE info_id = @info_id AND quantity <> quantity_fact";
+                        sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
+                        using (SQLiteDataReader sqliteReader = sqliteCommand.ExecuteReader())
+                        {
+                            while (sqliteReader.Read())
+                            {
+                                writer.WriteStartElement("item");
+                                writer.WriteElementString("code", sqliteReader.GetValue(0).ToString());
+                                writer.WriteElementString("barcode", sqliteReader.GetValue(1).ToString());
+                                writer.WriteElementString("description", sqliteReader.GetValue(2).ToString());
+                                writer.WriteElementString("unit", sqliteReader.GetValue(3).ToString());
+                                writer.WriteElementString("quantity", sqliteReader.GetDecimal(4).ToString("0.000", CultureInfo.InvariantCulture));
+                                writer.WriteElementString("quantity_fact", sqliteReader.GetDecimal(5).ToString("0.000", CultureInfo.InvariantCulture));
+                                writer.WriteEndElement();
+                            }
+                        }
                     }
+
+                    writer.WriteEndElement();
 
                     writer.WriteEndElement();
 
@@ -603,7 +625,7 @@ namespace SimpleInventoryFrontEnd
 
         #region DataGridView
 
-        public static int rowid_index = -1, barcode_index = -1, quantity_fact_index = -1;
+        public static int rowid_index = -1, description_index = -1, barcode_index = -1, quantity_fact_index = -1;
         public static Hashtable formElements = null;
 
         public static Dictionary<string, DataGridViewColumnAppearance> columnsAppearance;
@@ -674,6 +696,7 @@ namespace SimpleInventoryFrontEnd
             switch (column.Name)
             {
                 case "rowid": rowid_index = column.Index; break;
+                case "description": description_index = column.Index; break;
                 case "barcode": barcode_index = column.Index; break;
                 case "quantity_fact": quantity_fact_index = column.Index; break;
             }
@@ -717,6 +740,27 @@ namespace SimpleInventoryFrontEnd
                 bindingSource.Position = position;
                 dataGridView.CurrentCell = dataGridView.Rows[position].Cells[quantity_fact_index];
             }
+
+            if (description_index != -1)
+            {
+                for (int i = 0; i < dataGridView.Rows.Count; i++)
+                    if (String.IsNullOrWhiteSpace(dataGridView.Rows[i].Cells[description_index].Value.ToString()))
+                        dataGridView.Rows[i].Cells[description_index].ReadOnly = false;
+            }
+        }
+
+        public static int FindRow(int column_index, string value)
+        {
+            if (formElements == null)
+                return -1;
+
+            DataGridView dataGridView = (DataGridView)formElements["gridInventory"];
+
+            for (int i = 0; i < dataGridView.Rows.Count; i++)
+                if (dataGridView.Rows[i].Cells[column_index].Value.ToString().StartsWith(value, StringComparison.InvariantCultureIgnoreCase))
+                    return i;
+
+            return -1;
         }
 
         #endregion
