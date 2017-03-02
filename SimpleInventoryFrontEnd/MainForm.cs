@@ -147,17 +147,23 @@ namespace SimpleInventoryFrontEnd
 
                 gridInventory_SelectQuickSearchRow(quickSearchBuffer.Substring(0, quickSearchBuffer.Length - 1));
 
-            } else if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Return || 
-                       e.KeyCode == Keys.Prior || e.KeyCode == Keys.PageUp ||
-                       e.KeyCode == Keys.Next || e.KeyCode == Keys.PageDown ||
-                       e.KeyCode == Keys.End ||  e.KeyCode == Keys.Home || 
-                       e.KeyCode == Keys.Left || e.KeyCode == Keys.Right || 
-                       e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)
+            }
+        }
+
+        private void gridInventory_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Return ||
+                                   e.KeyCode == Keys.Prior || e.KeyCode == Keys.PageUp ||
+                                   e.KeyCode == Keys.Next || e.KeyCode == Keys.PageDown ||
+                                   e.KeyCode == Keys.End || e.KeyCode == Keys.Home ||
+                                   e.KeyCode == Keys.Left || e.KeyCode == Keys.Right ||
+                                   e.KeyCode == Keys.Up || e.KeyCode == Keys.Down)
             {
                 timerQuickSearch_Tick(null, null);
 
-            } else if (e.KeyCode == Keys.Add || (e.KeyCode == Keys.Oemplus && e.Shift) || 
-                       e.KeyCode == Keys.Subtract || (e.KeyCode == Keys.OemMinus && e.Shift))
+            }
+            else if (e.KeyCode == Keys.Add || (e.KeyCode == Keys.Oemplus && e.Shift) ||
+                     e.KeyCode == Keys.Subtract || (e.KeyCode == Keys.OemMinus && e.Shift))
             {
                 timerQuickSearch_Tick(null, null);
 

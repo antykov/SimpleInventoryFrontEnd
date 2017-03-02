@@ -155,6 +155,7 @@
             this.gridInventory.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.gridInventory_CellValueChanged);
             this.gridInventory.ColumnAdded += new System.Windows.Forms.DataGridViewColumnEventHandler(this.gridInventory_ColumnAdded);
             this.gridInventory.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.gridInventory_DataError);
+            this.gridInventory.KeyDown += new System.Windows.Forms.KeyEventHandler(this.gridInventory_KeyDown);
             this.gridInventory.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.gridInventory_KeyPress);
             this.gridInventory.KeyUp += new System.Windows.Forms.KeyEventHandler(this.gridInventory_KeyUp);
             // 
