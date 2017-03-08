@@ -26,6 +26,11 @@ namespace SimpleInventoryFrontEnd
 
         private void MainForm_Load(object sender, EventArgs e)
         {
+            DataModule.regularQuantityStyle = new DataGridViewCellStyle(gridInventory.DefaultCellStyle);
+            DataModule.regularQuantityStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            DataModule.boldQuantityStyle = new DataGridViewCellStyle(DataModule.regularQuantityStyle);
+            DataModule.boldQuantityStyle.Font = new Font(DataModule.boldQuantityStyle.Font, FontStyle.Bold);
+
             PropertyInfo propertyBuffered = gridInventory.GetType().GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic);
             propertyBuffered.SetValue(gridInventory, true, null);
 
@@ -88,10 +93,24 @@ namespace SimpleInventoryFrontEnd
             if (e.RowIndex == -1 || e.ColumnIndex == -1 || DataModule.rowid_index == -1)
                 return;
 
-            DataModule.UpdateSQLiteRow(
+            DataGridViewCell current_cell = gridInventory.Rows[e.RowIndex].Cells[e.ColumnIndex];
+
+            DataModule.UpdateInventoryItem(
                 (long)gridInventory.Rows[e.RowIndex].Cells[DataModule.rowid_index].Value,
                 gridInventory.Columns[e.ColumnIndex].Name,
-                gridInventory.Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
+                current_cell.Value);
+
+            if (e.ColumnIndex == DataModule.quantity_fact_index)
+            {
+                current_cell.Style.ApplyStyle(DataModule.regularQuantityStyle);
+
+                decimal value = 0;
+                if (Decimal.TryParse(current_cell.Value.ToString(), out value))
+                {
+                    if (value != 0)
+                        current_cell.Style.ApplyStyle(DataModule.boldQuantityStyle);
+                }
+            }
         }
 
         private void openMenuItem_Click(object sender, EventArgs e)
@@ -99,6 +118,14 @@ namespace SimpleInventoryFrontEnd
             FormSelectExistingInventory formSelect = new FormSelectExistingInventory();
             if (formSelect.ShowDialog() == DialogResult.OK)
                 DataModule.UpdateInventoryGrid();
+            else if (formSelect.IsUpdateNeeded && DataModule.inventoryInfo != null)
+            {
+                if (!DataModule.CheckInventoryExisting(DataModule.inventoryInfo.ID))
+                {
+                    DataModule.inventoryInfo = null;
+                    bindingSource.DataSource = new DataTable();
+                }
+            }
         }
 
         private void exportMenuItem_Click(object sender, EventArgs e)
@@ -165,6 +192,8 @@ namespace SimpleInventoryFrontEnd
             else if (e.KeyCode == Keys.Add || (e.KeyCode == Keys.Oemplus && e.Shift) ||
                      e.KeyCode == Keys.Subtract || (e.KeyCode == Keys.OemMinus && e.Shift))
             {
+                quickSearchColumnIndex = gridInventory.CurrentCell.ColumnIndex;
+
                 timerQuickSearch_Tick(null, null);
 
                 if (DataModule.quantity_fact_index == -1)
@@ -206,6 +235,11 @@ namespace SimpleInventoryFrontEnd
             timerQuickSearch.Enabled = false;
             quickSearchBuffer = "";
             toolLabelQuickSearch.Text = "";
+        }
+
+        private void gridInventory_Sorted(object sender, EventArgs e)
+        {
+            DataModule.ApplyDataGridCellsStyle();
         }
     }
 }

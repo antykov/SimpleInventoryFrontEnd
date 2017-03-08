@@ -60,6 +60,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DataModule.cs" />
+    <Compile Include="FormAddEmptyInventory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormAddEmptyInventory.Designer.cs">
+      <DependentUpon>FormAddEmptyInventory.cs</DependentUpon>
+    </Compile>
     <Compile Include="FormSelectExistingInventory.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -80,6 +86,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="FormAddEmptyInventory.resx">
+      <DependentUpon>FormAddEmptyInventory.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="FormSelectExistingInventory.resx">
       <DependentUpon>FormSelectExistingInventory.cs</DependentUpon>
     </EmbeddedResource>

@@ -13,13 +13,17 @@ namespace SimpleInventoryFrontEnd
 {
     public partial class FormSelectExistingInventory : Form
     {
+        public bool IsUpdateNeeded = false;
+
         public FormSelectExistingInventory()
         {
             InitializeComponent();
         }
 
-        private void FormSelectExistingInventory_Load(object sender, EventArgs e)
+        private void FillExistingInventories(string description = "")
         {
+            listViewInventory.Clear();
+
             try
             {
                 using (SQLiteCommand sqliteCommand = new SQLiteCommand(DataModule.sqliteConnection))
@@ -57,13 +61,11 @@ namespace SimpleInventoryFrontEnd
                 DialogResult = DialogResult.Cancel;
                 Close();
             }
+        }
 
-            if (listViewInventory.Items.Count == 0)
-            {
-                MessageBox.Show("Отсутствуют сохраненные инвентаризации!", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                DialogResult = DialogResult.Cancel;
-                Close();
-            }
+        private void FormSelectExistingInventory_Load(object sender, EventArgs e)
+        {
+            FillExistingInventories();
         }
 
         private void listViewInventory_DoubleClick(object sender, EventArgs e)
@@ -84,6 +86,42 @@ namespace SimpleInventoryFrontEnd
             DataModule.inventoryInfo = (InventoryInfo)listViewInventory.SelectedItems[0].Tag;
             DialogResult = DialogResult.OK;
             Close();
+        }
+
+        private void listViewInventory_Resize(object sender, EventArgs e)
+        {
+            listViewInventory.TileSize = new Size(listViewInventory.Width - 30, listViewInventory.TileSize.Height);
+        }
+
+        private void buttonAddEmpty_Click(object sender, EventArgs e)
+        {
+            string current_description = "";
+            if (listViewInventory.SelectedItems.Count > 0)
+                current_description = listViewInventory.SelectedItems[0].Text;
+
+            FormAddEmptyInventory formAddEmpty = new FormAddEmptyInventory();
+            if (formAddEmpty.ShowDialog() == DialogResult.OK)
+                FillExistingInventories(current_description);
+        }
+
+        private void buttonDelete_Click(object sender, EventArgs e)
+        {
+            if (listViewInventory.SelectedItems.Count == 0)
+                return;
+
+            if (MessageBox.Show(
+                    "Вы действительно хотите удалить инвентаризацию?",
+                    "Вопрос",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question,
+                    MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                return;
+
+            DataModule.DeleteInventory((InventoryInfo)listViewInventory.SelectedItems[0].Tag);
+
+            IsUpdateNeeded = true;
+
+            FillExistingInventories();
         }
     }
 }

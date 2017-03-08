@@ -39,10 +39,10 @@
             this.statusStripMain = new System.Windows.Forms.StatusStrip();
             this.toolLabelScannerConnected = new System.Windows.Forms.ToolStripStatusLabel();
             this.toolLabelInventoryInfo = new System.Windows.Forms.ToolStripStatusLabel();
+            this.toolLabelQuickSearch = new System.Windows.Forms.ToolStripStatusLabel();
             this.bindingSource = new System.Windows.Forms.BindingSource(this.components);
             this.gridInventory = new System.Windows.Forms.DataGridView();
             this.timerQuickSearch = new System.Windows.Forms.Timer(this.components);
-            this.toolLabelQuickSearch = new System.Windows.Forms.ToolStripStatusLabel();
             this.menuStripMain.SuspendLayout();
             this.statusStripMain.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource)).BeginInit();
@@ -134,6 +134,12 @@
             this.toolLabelInventoryInfo.Size = new System.Drawing.Size(243, 19);
             this.toolLabelInventoryInfo.Text = "Данные по инвентаризации не загружены";
             // 
+            // toolLabelQuickSearch
+            // 
+            this.toolLabelQuickSearch.Name = "toolLabelQuickSearch";
+            this.toolLabelQuickSearch.Size = new System.Drawing.Size(108, 19);
+            this.toolLabelQuickSearch.Text = "БЫСТРЫЙ ПОИСК";
+            // 
             // gridInventory
             // 
             this.gridInventory.AllowUserToAddRows = false;
@@ -155,6 +161,7 @@
             this.gridInventory.CellValueChanged += new System.Windows.Forms.DataGridViewCellEventHandler(this.gridInventory_CellValueChanged);
             this.gridInventory.ColumnAdded += new System.Windows.Forms.DataGridViewColumnEventHandler(this.gridInventory_ColumnAdded);
             this.gridInventory.DataError += new System.Windows.Forms.DataGridViewDataErrorEventHandler(this.gridInventory_DataError);
+            this.gridInventory.Sorted += new System.EventHandler(this.gridInventory_Sorted);
             this.gridInventory.KeyDown += new System.Windows.Forms.KeyEventHandler(this.gridInventory_KeyDown);
             this.gridInventory.KeyPress += new System.Windows.Forms.KeyPressEventHandler(this.gridInventory_KeyPress);
             this.gridInventory.KeyUp += new System.Windows.Forms.KeyEventHandler(this.gridInventory_KeyUp);
@@ -163,12 +170,6 @@
             // 
             this.timerQuickSearch.Interval = 5000;
             this.timerQuickSearch.Tick += new System.EventHandler(this.timerQuickSearch_Tick);
-            // 
-            // toolLabelQuickSearch
-            // 
-            this.toolLabelQuickSearch.Name = "toolLabelQuickSearch";
-            this.toolLabelQuickSearch.Size = new System.Drawing.Size(108, 19);
-            this.toolLabelQuickSearch.Text = "БЫСТРЫЙ ПОИСК";
             // 
             // MainForm
             // 

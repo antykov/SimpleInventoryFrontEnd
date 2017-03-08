@@ -19,6 +19,9 @@ namespace SimpleInventoryFrontEnd
         public string CompanyCode;
         public string Warehouse;
         public string WarehouseCode;
+        public string Group;
+        public string GroupCode;
+        public string Comment;
         public DateTime Date;
         public DateTime LastChange;
         public long ID;
@@ -32,6 +35,9 @@ namespace SimpleInventoryFrontEnd
             CompanyCode = "";
             Warehouse = "";
             WarehouseCode = "";
+            Group = "";
+            GroupCode = "";
+            Comment = "";
             Date = new DateTime();
             ID = 0;
         }
@@ -47,8 +53,16 @@ namespace SimpleInventoryFrontEnd
             if (!LastChange.Equals(new DateTime()))
                 s_last_change = ", обновление от " + LastChange.ToString("dd.MM.yyyy HH:mm:ss");
 
-            Description = Warehouse + " от " + Date.ToString("dd.MM.yyyy") + s_last_change;
-            FullDescription = Company + " (" + Warehouse + ") от " + Date.ToString("dd.MM.yyyy") + s_last_change;
+            string s_group = "";
+            if (!String.IsNullOrWhiteSpace(Group))
+                s_group = ", по группе \"" + Group + "\"";
+
+            string s_comment = "";
+            if (!String.IsNullOrWhiteSpace(Comment))
+                s_comment = " (" + Comment + ")";
+
+            Description = Warehouse + " от " + Date.ToString("dd.MM.yyyy") + s_group + s_last_change + s_comment;
+            FullDescription = Company + " (" + Warehouse + ") от " + Date.ToString("dd.MM.yyyy") + s_group + s_last_change + s_comment;
         }
 
         public override string ToString()
@@ -65,6 +79,9 @@ namespace SimpleInventoryFrontEnd
                 case "COMPANY_CODE": CompanyCode = value; break;
                 case "WAREHOUSE": Warehouse = value; break;
                 case "WAREHOUSE_CODE": WarehouseCode = value; break;
+                case "INVENTORY_GROUP": Group = value; break;
+                case "INVENTORY_GROUP_CODE": GroupCode = value; break;
+                case "COMMENT": Comment = value; break;
                 case "DATE": DateTime.TryParse(value, out Date); break;
                 case "LAST_CHANGE": DateTime.TryParse(value, out LastChange); break;
             }
@@ -136,6 +153,8 @@ namespace SimpleInventoryFrontEnd
 
     public static class DataModule
     {
+        public static InventoryInfo inventoryInfo = null;
+
         #region Сканер штрихкодов
 
         [DllImport("kernel32.dll", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
@@ -304,21 +323,24 @@ namespace SimpleInventoryFrontEnd
             {
                 sqliteCommand.CommandText = @"
                     CREATE TABLE IF NOT EXISTS inventory_info
-                        (id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                         date           TEXT, 
-                         last_change    TEXT, 
-                         company        TEXT,
-                         company_code   TEXT,
-                         warehouse      TEXT, 
-                         warehouse_code TEXT);
+                        (id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                         date                 TEXT, 
+                         last_change          TEXT, 
+                         company              TEXT,
+                         company_code         TEXT,
+                         warehouse            TEXT, 
+                         warehouse_code       TEXT,
+                         inventory_group_code TEXT,
+                         inventory_group      TEXT,
+                         comment              TEXT);
                     CREATE TABLE IF NOT EXISTS inventory_items
-                        (info_id        INTEGER,
-                         code           TEXT, 
-                         description    TEXT,
-                         unit           TEXT,
-                         barcode        TEXT,
-                         quantity       NUMERIC,
-                         quantity_fact  NUMERIC);
+                        (info_id              INTEGER,
+                         code                 TEXT, 
+                         description          TEXT,
+                         unit                 TEXT,
+                         barcode              TEXT,
+                         quantity             NUMERIC,
+                         quantity_fact        NUMERIC);
                     ";
                 try
                 {
@@ -344,10 +366,12 @@ namespace SimpleInventoryFrontEnd
                     WHERE 
                         date = @date AND 
                         company_code = @company_code AND 
-                        warehouse_code = @warehouse_code";
+                        warehouse_code = @warehouse_code AND
+                        inventory_group_code = @group_code";
             sqliteCommand.Parameters.AddWithValue("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
             sqliteCommand.Parameters.AddWithValue("company_code", inventoryInfo.CompanyCode);
             sqliteCommand.Parameters.AddWithValue("warehouse_code", inventoryInfo.WarehouseCode);
+            sqliteCommand.Parameters.AddWithValue("group_code", inventoryInfo.GroupCode);
 
             List<long> inventory_ids = new List<long>();
             using (SQLiteDataReader sqliteReader = sqliteCommand.ExecuteReader())
@@ -385,13 +409,16 @@ namespace SimpleInventoryFrontEnd
         {
             sqliteCommand.CommandText = @"
                 INSERT INTO 
-                    inventory_info (date, company, company_code, warehouse, warehouse_code)
-                VALUES (@date, @company, @company_code, @warehouse, @warehouse_code)";
+                    inventory_info (date, company, company_code, warehouse, warehouse_code, inventory_group_code, inventory_group, comment)
+                VALUES (@date, @company, @company_code, @warehouse, @warehouse_code, @group_code, @group, @comment)";
             sqliteCommand.Parameters.AddWithValue("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
             sqliteCommand.Parameters.AddWithValue("company", inventoryInfo.Company);
             sqliteCommand.Parameters.AddWithValue("company_code", inventoryInfo.CompanyCode);
             sqliteCommand.Parameters.AddWithValue("warehouse", inventoryInfo.Warehouse);
             sqliteCommand.Parameters.AddWithValue("warehouse_code", inventoryInfo.WarehouseCode);
+            sqliteCommand.Parameters.AddWithValue("group_code", inventoryInfo.GroupCode);
+            sqliteCommand.Parameters.AddWithValue("group", inventoryInfo.Group);
+            sqliteCommand.Parameters.AddWithValue("comment", inventoryInfo.Comment);
             sqliteCommand.ExecuteNonQuery();
 
             sqliteCommand.CommandText = @"
@@ -402,7 +429,8 @@ namespace SimpleInventoryFrontEnd
                 WHERE 
                     date = @date AND 
                     company_code = @company_code AND 
-                    warehouse_code = @warehouse_code";
+                    warehouse_code = @warehouse_code AND
+                    inventory_group_code = @group_code";
             using (SQLiteDataReader sqliteReader = sqliteCommand.ExecuteReader())
             {
                 if (sqliteReader.Read())
@@ -437,7 +465,7 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
-        public static void UpdateSQLiteRow(long rowid, string column_name, object column_value)
+        public static void UpdateInventoryItem(long rowid, string column_name, object column_value)
         {
             try
             {
@@ -468,11 +496,89 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
+        public static void AddEmptyInventory(InventoryInfo info)
+        {
+            try
+            {
+                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                {
+                    sqliteCommand.CommandText = @"
+                        INSERT INTO 
+                            inventory_info (date, company, company_code, warehouse, warehouse_code, inventory_group_code, inventory_group, comment)
+                        VALUES (@date, @company, @company_code, @warehouse, @warehouse_code, @group_code, @group, @comment)";
+                    sqliteCommand.Parameters.AddWithValue("date", DateTime.Now.ToString("yyyy-MM-dd"));
+                    sqliteCommand.Parameters.AddWithValue("company", info.Company);
+                    sqliteCommand.Parameters.AddWithValue("company_code", info.CompanyCode);
+                    sqliteCommand.Parameters.AddWithValue("warehouse", info.Warehouse);
+                    sqliteCommand.Parameters.AddWithValue("warehouse_code", info.WarehouseCode);
+                    sqliteCommand.Parameters.AddWithValue("group_code", "");
+                    sqliteCommand.Parameters.AddWithValue("group", "");
+                    sqliteCommand.Parameters.AddWithValue("comment", info.Comment);
+                    sqliteCommand.ExecuteNonQuery();
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ошибка добавления инвентаризации", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        public static void DeleteInventory(InventoryInfo info)
+        {
+            SQLiteTransaction sqliteTransaction = null;
+            try
+            {
+                sqliteTransaction = sqliteConnection.BeginTransaction();
+                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                {
+                    sqliteCommand.CommandText = @"
+                        DELETE FROM inventory_items
+                        WHERE info_id = @id";
+                    sqliteCommand.Parameters.AddWithValue("id", info.ID);
+                    sqliteCommand.ExecuteNonQuery();
+
+                    sqliteCommand.CommandText = @"
+                        DELETE FROM inventory_info
+                        WHERE id = @id";
+                    sqliteCommand.ExecuteNonQuery();
+
+                    sqliteTransaction.Commit();
+                }
+            }
+            catch (Exception e)
+            {
+                sqliteTransaction?.Rollback();
+                MessageBox.Show(e.Message, "Ошибка добавления инвентаризации", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        public static bool CheckInventoryExisting(long id)
+        {
+            try
+            {
+                using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
+                {
+                    sqliteCommand.CommandText = @"
+                        SELECT COUNT(*) 
+                        FROM inventory_info
+                        WHERE id = @id";
+                    sqliteCommand.Parameters.AddWithValue("id", id);
+
+                    if ((long)sqliteCommand.ExecuteScalar() > 0)
+                        return true;
+                }
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, "Ошибка работы с БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+            return false;
+        }
+
         #endregion
 
         #region Чтение / запись файла с данными
-
-        public static InventoryInfo inventoryInfo = null;
 
         static SortedList<string, InventoryItem> inventoryItems;
 
@@ -576,10 +682,12 @@ namespace SimpleInventoryFrontEnd
                     writer.WriteProcessingInstruction("xml", "version = '1.0' encoding = 'windows-1251'");
 
                     writer.WriteStartElement("inventory_result");
-                    writer.WriteAttributeString("company", inventoryInfo.Company);
                     writer.WriteAttributeString("company_code", inventoryInfo.CompanyCode);
-                    writer.WriteAttributeString("warehouse", inventoryInfo.Warehouse);
+                    writer.WriteAttributeString("company", inventoryInfo.Company);
                     writer.WriteAttributeString("warehouse_code", inventoryInfo.WarehouseCode);
+                    writer.WriteAttributeString("warehouse", inventoryInfo.Warehouse);
+                    writer.WriteAttributeString("inventory_group_code", inventoryInfo.GroupCode);
+                    writer.WriteAttributeString("inventory_group", inventoryInfo.Group);
                     writer.WriteAttributeString("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
                     writer.WriteAttributeString("last_change", inventoryInfo.LastChange.ToString("yyyy-MM-dd HH:mm:ss"));
 
@@ -625,6 +733,7 @@ namespace SimpleInventoryFrontEnd
 
         #region DataGridView
 
+        public static DataGridViewCellStyle regularQuantityStyle, boldQuantityStyle;
         public static int rowid_index = -1, description_index = -1, barcode_index = -1, quantity_fact_index = -1;
         public static Hashtable formElements = null;
 
@@ -702,6 +811,29 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
+        public static void ApplyDataGridCellsStyle()
+        {
+            DataGridView dataGridView = (DataGridView)formElements["gridInventory"];
+
+            for (int i = 0; i < dataGridView.Rows.Count; i++)
+            {
+                if (description_index != -1)
+                {
+                    if (String.IsNullOrWhiteSpace(dataGridView.Rows[i].Cells[description_index].Value.ToString()))
+                        dataGridView.Rows[i].Cells[description_index].ReadOnly = false;
+                }
+                if (quantity_fact_index != -1)
+                {
+                    decimal value = 0;
+                    if (Decimal.TryParse(dataGridView.Rows[i].Cells[quantity_fact_index].Value.ToString(), out value))
+                    {
+                        if (value != 0)
+                            dataGridView.Rows[i].Cells[quantity_fact_index].Style.ApplyStyle(DataModule.boldQuantityStyle);
+                    }
+                }
+            }
+        }
+
         public static void UpdateInventoryGrid(long rowid = -1)
         {
             if (formElements == null)
@@ -741,12 +873,7 @@ namespace SimpleInventoryFrontEnd
                 dataGridView.CurrentCell = dataGridView.Rows[position].Cells[quantity_fact_index];
             }
 
-            if (description_index != -1)
-            {
-                for (int i = 0; i < dataGridView.Rows.Count; i++)
-                    if (String.IsNullOrWhiteSpace(dataGridView.Rows[i].Cells[description_index].Value.ToString()))
-                        dataGridView.Rows[i].Cells[description_index].ReadOnly = false;
-            }
+            ApplyDataGridCellsStyle();
         }
 
         public static int FindRow(int column_index, string value)
