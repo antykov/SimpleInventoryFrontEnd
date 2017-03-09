@@ -391,15 +391,7 @@ namespace SimpleInventoryFrontEnd
                     return false;
 
                 foreach (var id in inventory_ids)
-                {
-                    sqliteCommand.CommandText = "DELETE FROM inventory_items WHERE info_id = @id";
-                    sqliteCommand.Parameters.AddWithValue("id", id);
-                    sqliteCommand.ExecuteNonQuery();
-
-                    sqliteCommand.CommandText = "DELETE FROM inventory_info WHERE id = @id";
-                    sqliteCommand.Parameters.AddWithValue("id", id);
-                    sqliteCommand.ExecuteNonQuery();
-                }
+                    DeleteInventory(id);
             }
 
             return true;
@@ -523,7 +515,7 @@ namespace SimpleInventoryFrontEnd
             }
         }
 
-        public static void DeleteInventory(InventoryInfo info)
+        public static void DeleteInventory(long id)
         {
             SQLiteTransaction sqliteTransaction = null;
             try
@@ -534,7 +526,7 @@ namespace SimpleInventoryFrontEnd
                     sqliteCommand.CommandText = @"
                         DELETE FROM inventory_items
                         WHERE info_id = @id";
-                    sqliteCommand.Parameters.AddWithValue("id", info.ID);
+                    sqliteCommand.Parameters.AddWithValue("id", id);
                     sqliteCommand.ExecuteNonQuery();
 
                     sqliteCommand.CommandText = @"

@@ -29,9 +29,9 @@ namespace SimpleInventoryFrontEnd
                 using (SQLiteCommand sqliteCommand = new SQLiteCommand(DataModule.sqliteConnection))
                 {
                     sqliteCommand.CommandText = @"
-                        SELECT id, company, company_code, warehouse, warehouse_code, date, last_change
+                        SELECT id, company, company_code, warehouse, warehouse_code, inventory_group_code, inventory_group, date, last_change
                         FROM inventory_info
-                        ORDER BY company, last_change DESC";
+                        ORDER BY company, warehouse, inventory_group, last_change DESC";
                     using (SQLiteDataReader reader = sqliteCommand.ExecuteReader())
                     {
                         Hashtable listViewGroups = new Hashtable();
@@ -117,7 +117,7 @@ namespace SimpleInventoryFrontEnd
                     MessageBoxDefaultButton.Button2) != DialogResult.Yes)
                 return;
 
-            DataModule.DeleteInventory((InventoryInfo)listViewInventory.SelectedItems[0].Tag);
+            DataModule.DeleteInventory(((InventoryInfo)listViewInventory.SelectedItems[0].Tag).ID);
 
             IsUpdateNeeded = true;
 
