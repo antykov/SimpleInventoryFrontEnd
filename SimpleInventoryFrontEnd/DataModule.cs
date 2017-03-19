@@ -21,12 +21,14 @@ namespace SimpleInventoryFrontEnd
         public string WarehouseCode;
         public string Group;
         public string GroupCode;
+        public string DocumentNumber;
         public string Comment;
         public DateTime Date;
         public DateTime LastChange;
         public long ID;
 
         public string FullDescription;
+        public string FullDescriptionWithoutLastChange;
         public string Description;
 
         public InventoryInfo()
@@ -37,6 +39,7 @@ namespace SimpleInventoryFrontEnd
             WarehouseCode = "";
             Group = "";
             GroupCode = "";
+            DocumentNumber = "";
             Comment = "";
             Date = new DateTime();
             ID = 0;
@@ -57,12 +60,17 @@ namespace SimpleInventoryFrontEnd
             if (!String.IsNullOrWhiteSpace(Group))
                 s_group = ", по группе \"" + Group + "\"";
 
+            string s_document = "";
+            if (!String.IsNullOrWhiteSpace(DocumentNumber))
+                s_document = " №" + DocumentNumber;
+
             string s_comment = "";
             if (!String.IsNullOrWhiteSpace(Comment))
                 s_comment = " (" + Comment + ")";
 
-            Description = Warehouse + " от " + Date.ToString("dd.MM.yyyy") + s_group + s_last_change + s_comment;
-            FullDescription = Company + " (" + Warehouse + ") от " + Date.ToString("dd.MM.yyyy") + s_group + s_last_change + s_comment;
+            Description = Warehouse + s_document + " от " + Date.ToString("dd.MM.yyyy") + s_group + s_last_change + s_comment;
+            FullDescriptionWithoutLastChange = Company + " (" + Warehouse + ")" + s_document + " от " + Date.ToString("dd.MM.yyyy") + s_group;
+            FullDescription = FullDescriptionWithoutLastChange + s_last_change + s_comment;
         }
 
         public override string ToString()
@@ -81,6 +89,7 @@ namespace SimpleInventoryFrontEnd
                 case "WAREHOUSE_CODE": WarehouseCode = value; break;
                 case "INVENTORY_GROUP": Group = value; break;
                 case "INVENTORY_GROUP_CODE": GroupCode = value; break;
+                case "DOCUMENT_NUMBER": DocumentNumber = value; break;
                 case "COMMENT": Comment = value; break;
                 case "DATE": DateTime.TryParse(value, out Date); break;
                 case "LAST_CHANGE": DateTime.TryParse(value, out LastChange); break;
@@ -332,6 +341,7 @@ namespace SimpleInventoryFrontEnd
                          warehouse_code       TEXT,
                          inventory_group_code TEXT,
                          inventory_group      TEXT,
+                         document_number      TEXT,
                          comment              TEXT);
                     CREATE TABLE IF NOT EXISTS inventory_items
                         (info_id              INTEGER,
@@ -367,11 +377,13 @@ namespace SimpleInventoryFrontEnd
                         date = @date AND 
                         company_code = @company_code AND 
                         warehouse_code = @warehouse_code AND
-                        inventory_group_code = @group_code";
+                        inventory_group_code = @group_code AND
+                        document_number = @document_number";
             sqliteCommand.Parameters.AddWithValue("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
             sqliteCommand.Parameters.AddWithValue("company_code", inventoryInfo.CompanyCode);
             sqliteCommand.Parameters.AddWithValue("warehouse_code", inventoryInfo.WarehouseCode);
             sqliteCommand.Parameters.AddWithValue("group_code", inventoryInfo.GroupCode);
+            sqliteCommand.Parameters.AddWithValue("document_number", inventoryInfo.DocumentNumber);
 
             List<long> inventory_ids = new List<long>();
             using (SQLiteDataReader sqliteReader = sqliteCommand.ExecuteReader())
@@ -401,8 +413,20 @@ namespace SimpleInventoryFrontEnd
         {
             sqliteCommand.CommandText = @"
                 INSERT INTO 
-                    inventory_info (date, company, company_code, warehouse, warehouse_code, inventory_group_code, inventory_group, comment)
-                VALUES (@date, @company, @company_code, @warehouse, @warehouse_code, @group_code, @group, @comment)";
+                    inventory_info (
+                        date, 
+                        company, company_code, 
+                        warehouse, warehouse_code, 
+                        inventory_group_code, inventory_group, 
+                        document_number, 
+                        comment)
+                VALUES (
+                    @date, 
+                    @company, @company_code, 
+                    @warehouse, @warehouse_code, 
+                    @group_code, @group, 
+                    @document_number,
+                    @comment)";
             sqliteCommand.Parameters.AddWithValue("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
             sqliteCommand.Parameters.AddWithValue("company", inventoryInfo.Company);
             sqliteCommand.Parameters.AddWithValue("company_code", inventoryInfo.CompanyCode);
@@ -410,6 +434,7 @@ namespace SimpleInventoryFrontEnd
             sqliteCommand.Parameters.AddWithValue("warehouse_code", inventoryInfo.WarehouseCode);
             sqliteCommand.Parameters.AddWithValue("group_code", inventoryInfo.GroupCode);
             sqliteCommand.Parameters.AddWithValue("group", inventoryInfo.Group);
+            sqliteCommand.Parameters.AddWithValue("document_number", inventoryInfo.DocumentNumber);
             sqliteCommand.Parameters.AddWithValue("comment", inventoryInfo.Comment);
             sqliteCommand.ExecuteNonQuery();
 
@@ -422,7 +447,8 @@ namespace SimpleInventoryFrontEnd
                     date = @date AND 
                     company_code = @company_code AND 
                     warehouse_code = @warehouse_code AND
-                    inventory_group_code = @group_code";
+                    inventory_group_code = @group_code AND
+                    document_number = @document_number";
             using (SQLiteDataReader sqliteReader = sqliteCommand.ExecuteReader())
             {
                 if (sqliteReader.Read())
@@ -496,8 +522,20 @@ namespace SimpleInventoryFrontEnd
                 {
                     sqliteCommand.CommandText = @"
                         INSERT INTO 
-                            inventory_info (date, company, company_code, warehouse, warehouse_code, inventory_group_code, inventory_group, comment)
-                        VALUES (@date, @company, @company_code, @warehouse, @warehouse_code, @group_code, @group, @comment)";
+                            inventory_info (
+                                date, 
+                                company, company_code, 
+                                warehouse, warehouse_code, 
+                                inventory_group_code, inventory_group, 
+                                document_number,
+                                comment)
+                        VALUES (
+                            @date, 
+                            @company, @company_code, 
+                            @warehouse, @warehouse_code, 
+                            @group_code, @group, 
+                            @document_number,
+                            @comment)";
                     sqliteCommand.Parameters.AddWithValue("date", DateTime.Now.ToString("yyyy-MM-dd"));
                     sqliteCommand.Parameters.AddWithValue("company", info.Company);
                     sqliteCommand.Parameters.AddWithValue("company_code", info.CompanyCode);
@@ -505,6 +543,8 @@ namespace SimpleInventoryFrontEnd
                     sqliteCommand.Parameters.AddWithValue("warehouse_code", info.WarehouseCode);
                     sqliteCommand.Parameters.AddWithValue("group_code", "");
                     sqliteCommand.Parameters.AddWithValue("group", "");
+                    sqliteCommand.Parameters.AddWithValue("group", "");
+                    sqliteCommand.Parameters.AddWithValue("document_number", "");
                     sqliteCommand.Parameters.AddWithValue("comment", info.Comment);
                     sqliteCommand.ExecuteNonQuery();
                 }
@@ -680,6 +720,7 @@ namespace SimpleInventoryFrontEnd
                     writer.WriteAttributeString("warehouse", inventoryInfo.Warehouse);
                     writer.WriteAttributeString("inventory_group_code", inventoryInfo.GroupCode);
                     writer.WriteAttributeString("inventory_group", inventoryInfo.Group);
+                    writer.WriteAttributeString("document_number", inventoryInfo.DocumentNumber);
                     writer.WriteAttributeString("date", inventoryInfo.Date.ToString("yyyy-MM-dd"));
                     writer.WriteAttributeString("last_change", inventoryInfo.LastChange.ToString("yyyy-MM-dd HH:mm:ss"));
 
@@ -834,10 +875,7 @@ namespace SimpleInventoryFrontEnd
             BindingSource bindingSource = (BindingSource)formElements["bindingSource"];
             DataGridView dataGridView = (DataGridView)formElements["gridInventory"];
 
-            ((ToolStripStatusLabel)formElements["toolLabelInventoryInfo"]).Text =
-                inventoryInfo.Company + " (" +
-                inventoryInfo.Warehouse + ") от " +
-                inventoryInfo.Date.ToString("dd.MM.yyyy");
+            ((ToolStripStatusLabel)formElements["toolLabelInventoryInfo"]).Text = inventoryInfo.FullDescriptionWithoutLastChange;
 
             DataTable table = new DataTable();
 
