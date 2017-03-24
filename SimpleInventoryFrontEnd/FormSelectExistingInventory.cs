@@ -33,11 +33,11 @@ namespace SimpleInventoryFrontEnd
                             id, 
                             company, company_code, 
                             warehouse, warehouse_code, 
-                            inventory_group_code, inventory_group, 
                             document_number,
+                            comment,
                             date, last_change
                         FROM inventory_info
-                        ORDER BY company, warehouse, inventory_group, document_number, last_change DESC";
+                        ORDER BY company, warehouse, document_number, comment, last_change DESC";
                     using (SQLiteDataReader reader = sqliteCommand.ExecuteReader())
                     {
                         Hashtable listViewGroups = new Hashtable();

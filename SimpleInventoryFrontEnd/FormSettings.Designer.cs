@@ -33,6 +33,8 @@
             this.buttonCancel = new System.Windows.Forms.Button();
             this.buttonOK = new System.Windows.Forms.Button();
             this.comboBoxScannerName = new System.Windows.Forms.ComboBox();
+            this.checkBoxNewRow = new System.Windows.Forms.CheckBox();
+            this.checkBoxExportDiff = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // labelScanerDeviceName
@@ -57,7 +59,7 @@
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(454, 48);
+            this.buttonCancel.Location = new System.Drawing.Point(454, 87);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(95, 23);
             this.buttonCancel.TabIndex = 3;
@@ -66,7 +68,7 @@
             // 
             // buttonOK
             // 
-            this.buttonOK.Location = new System.Drawing.Point(353, 48);
+            this.buttonOK.Location = new System.Drawing.Point(353, 87);
             this.buttonOK.Name = "buttonOK";
             this.buttonOK.Size = new System.Drawing.Size(95, 23);
             this.buttonOK.TabIndex = 4;
@@ -83,12 +85,36 @@
             this.comboBoxScannerName.Size = new System.Drawing.Size(191, 21);
             this.comboBoxScannerName.TabIndex = 5;
             // 
+            // checkBoxNewRow
+            // 
+            this.checkBoxNewRow.AutoSize = true;
+            this.checkBoxNewRow.Location = new System.Drawing.Point(261, 41);
+            this.checkBoxNewRow.Name = "checkBoxNewRow";
+            this.checkBoxNewRow.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.checkBoxNewRow.Size = new System.Drawing.Size(288, 17);
+            this.checkBoxNewRow.TabIndex = 6;
+            this.checkBoxNewRow.Text = "Добавлять новую строку, если штрихкод не найден";
+            this.checkBoxNewRow.UseVisualStyleBackColor = false;
+            // 
+            // checkBoxExportDiff
+            // 
+            this.checkBoxExportDiff.AutoSize = true;
+            this.checkBoxExportDiff.Location = new System.Drawing.Point(188, 64);
+            this.checkBoxExportDiff.Name = "checkBoxExportDiff";
+            this.checkBoxExportDiff.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
+            this.checkBoxExportDiff.Size = new System.Drawing.Size(361, 17);
+            this.checkBoxExportDiff.TabIndex = 7;
+            this.checkBoxExportDiff.Text = "Экспортировать результаты инвентаризации только с отличиями";
+            this.checkBoxExportDiff.UseVisualStyleBackColor = false;
+            // 
             // FormSettings
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.buttonCancel;
-            this.ClientSize = new System.Drawing.Size(559, 79);
+            this.ClientSize = new System.Drawing.Size(559, 119);
+            this.Controls.Add(this.checkBoxExportDiff);
+            this.Controls.Add(this.checkBoxNewRow);
             this.Controls.Add(this.comboBoxScannerName);
             this.Controls.Add(this.buttonOK);
             this.Controls.Add(this.buttonCancel);
@@ -110,5 +136,7 @@
         private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.Button buttonOK;
         private System.Windows.Forms.ComboBox comboBoxScannerName;
+        private System.Windows.Forms.CheckBox checkBoxNewRow;
+        private System.Windows.Forms.CheckBox checkBoxExportDiff;
     }
 }

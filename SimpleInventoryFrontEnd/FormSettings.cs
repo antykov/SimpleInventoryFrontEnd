@@ -40,6 +40,8 @@ namespace SimpleInventoryFrontEnd
         private void FormSettings_Load(object sender, EventArgs e)
         {
             FillComboBox();
+            checkBoxNewRow.Checked = Properties.Settings.Default.AddNewRowWhenBarcodeNotFound;
+            checkBoxExportDiff.Checked = Properties.Settings.Default.ExportDiffInventoryResults;
         }
 
         private void buttonShowScannerProperties_Click(object sender, EventArgs e)
@@ -55,6 +57,8 @@ namespace SimpleInventoryFrontEnd
             else
             {
                 Properties.Settings.Default.ScannerName = comboBoxScannerName.Text;
+                Properties.Settings.Default.AddNewRowWhenBarcodeNotFound = checkBoxNewRow.Checked;
+                Properties.Settings.Default.ExportDiffInventoryResults = checkBoxExportDiff.Checked;
                 Properties.Settings.Default.Save();
                 
                 DialogResult = DialogResult.OK;
