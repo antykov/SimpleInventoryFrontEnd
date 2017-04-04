@@ -140,6 +140,8 @@ namespace SimpleInventoryFrontEnd
 
     public static class DataModule
     {
+        public static readonly Version version = new Version("1.1.1");
+
         public static InventoryInfo inventoryInfo = null;
 
         #region Сканер штрихкодов
@@ -618,6 +620,9 @@ namespace SimpleInventoryFrontEnd
             inventoryInfo = new InventoryInfo();
             inventoryItems = new SortedList<string, InventoryItem>();
 
+            string fileVersionString = "";
+            Version fileVersion;
+            int cnt = 0;
             try
             {
                 using (XmlReader reader = XmlReader.Create(file))
@@ -631,9 +636,16 @@ namespace SimpleInventoryFrontEnd
                         {
                             reader.MoveToAttribute(i);
                             inventoryInfo.SetValueByName(reader.Name, reader.Value);
+
+                            if (reader.Name == "version")
+                                fileVersionString = reader.Value;
                         }
                         reader.MoveToElement();
                     }
+                    if (!Version.TryParse(fileVersionString, out fileVersion))
+                        throw new Exception($"В выбранном файле отсутствует атрибут с версией! Загрузка невозможна!");
+                    if (!version.Equals(fileVersion))
+                        throw new Exception($"Версия файла ({fileVersionString}) не соответствует требуемой версии ({version.ToString()})!");
                     if (!inventoryInfo.CheckMandatoryFields())
                         throw new Exception("В выбранном файле отсутствуют атрибуты, описывающие инвентаризацию!");
 
@@ -641,6 +653,7 @@ namespace SimpleInventoryFrontEnd
                     {
                         do
                         {
+                            cnt++;
                             InventoryItem item = ReadInventoryItem(reader);
                             if (item != null)
                                 inventoryItems.Add(item.Description + " / " + item.Code, item);
@@ -688,6 +701,7 @@ namespace SimpleInventoryFrontEnd
                     writer.WriteProcessingInstruction("xml", "version = '1.0' encoding = 'windows-1251'");
 
                     writer.WriteStartElement("inventory_result");
+                    writer.WriteAttributeString("version", version.ToString());
                     writer.WriteAttributeString("company_code", inventoryInfo.CompanyCode);
                     writer.WriteAttributeString("company", inventoryInfo.Company);
                     writer.WriteAttributeString("warehouse_code", inventoryInfo.WarehouseCode);
