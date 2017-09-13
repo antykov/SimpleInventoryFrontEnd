@@ -19,6 +19,7 @@ namespace SimpleInventoryFrontEnd
         private string document_for_descr => (string.IsNullOrWhiteSpace(DocumentNumber)) ? "" : " №" + DocumentNumber;
         private string last_change_for_descr => (LastChange.Equals(new DateTime())) ? "" : ", обновление от " + LastChange.ToString("dd.MM.yyyy HH:mm:ss");
 
+        public string Version;
         public string Company;
         public string CompanyCode;
         public string Warehouse;
@@ -35,6 +36,7 @@ namespace SimpleInventoryFrontEnd
 
         public InventoryInfo()
         {
+            Version = "";
             Company = "";
             CompanyCode = "";
             Warehouse = "";
@@ -63,6 +65,7 @@ namespace SimpleInventoryFrontEnd
             switch (name.ToUpper())
             {
                 case "ID": Int64.TryParse(value, out ID); break;
+                case "VERSION": Version = value; break;
                 case "COMPANY": Company = value; break;
                 case "COMPANY_CODE": CompanyCode = value; break;
                 case "WAREHOUSE": Warehouse = value; break;
@@ -91,6 +94,7 @@ namespace SimpleInventoryFrontEnd
         public string Unit;
         public decimal Quantity;
         public decimal QuantityFact;
+        public decimal Price;
 
         public InventoryItem()
         {
@@ -100,6 +104,7 @@ namespace SimpleInventoryFrontEnd
             Unit = "";
             Quantity = 0;
             QuantityFact = 0;
+            Price = 0;
         }
 
         public void SetValueByName(string name, string value)
@@ -112,6 +117,9 @@ namespace SimpleInventoryFrontEnd
                 case "UNIT": Unit = value; break;
                 case "QUANTITY":
                     Decimal.TryParse(value, System.Globalization.NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out Quantity);
+                    break;
+                case "PRICE":
+                    Decimal.TryParse(value, System.Globalization.NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out Price);
                     break;
             }
         }
@@ -140,6 +148,8 @@ namespace SimpleInventoryFrontEnd
 
     public static class DataModule
     {
+        public static readonly string VERSION = "1.1.1";
+
         public static InventoryInfo inventoryInfo = null;
 
         #region Сканер штрихкодов
@@ -252,8 +262,8 @@ namespace SimpleInventoryFrontEnd
                     using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
                     {
                         sqliteCommand.CommandText = @"
-                            INSERT INTO inventory_items (info_id, barcode, quantity, quantity_fact) 
-                            VALUES (@info_id, @barcode, 0, 1)";
+                            INSERT INTO inventory_items (info_id, barcode, quantity, quantity_fact, price) 
+                            VALUES (@info_id, @barcode, 0, 1, 0)";
                         sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
                         sqliteCommand.Parameters.AddWithValue("barcode", scanner.ScanData);
                         sqliteCommand.ExecuteNonQuery();
@@ -333,7 +343,8 @@ namespace SimpleInventoryFrontEnd
                          unit                 TEXT,
                          barcode              TEXT,
                          quantity             NUMERIC,
-                         quantity_fact        NUMERIC);
+                         quantity_fact        NUMERIC,
+                         price                NUMERIC);
                     ";
                 try
                 {
@@ -343,6 +354,31 @@ namespace SimpleInventoryFrontEnd
                 {
                     MessageBox.Show(e.Message, "Ошибка работы с БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return false;
+                }
+
+                bool isPriceColumnExist = false;
+                sqliteCommand.CommandText = @"PRAGMA table_info('inventory_items');";
+                using (SQLiteDataReader sqliteReader = sqliteCommand.ExecuteReader())
+                {
+                    while (sqliteReader.Read()) 
+                        if (sqliteReader.GetString(1) == "price")
+                        {
+                            isPriceColumnExist = true;
+                            break;
+                        }
+                }
+                if (!isPriceColumnExist)
+                {
+                    sqliteCommand.CommandText = "ALTER TABLE inventory_items ADD COLUMN price NUMERIC";
+                    try
+                    {
+                        sqliteCommand.ExecuteNonQuery();
+                    }
+                    catch (SQLiteException e)
+                    {
+                        MessageBox.Show(e.Message, "Ошибка работы с БД", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return false;
+                    }
                 }
             }
 
@@ -443,14 +479,15 @@ namespace SimpleInventoryFrontEnd
                 {
                     sqliteCommand.CommandText = @"
                         INSERT INTO 
-                            inventory_items (info_id, code, description, unit, barcode, quantity, quantity_fact)
-                        VALUES (@info_id, @code, @description, @unit, @barcode, @quantity, 0)";
+                            inventory_items (info_id, code, description, unit, barcode, quantity, quantity_fact, price)
+                        VALUES (@info_id, @code, @description, @unit, @barcode, @quantity, 0, @price)";
                     sqliteCommand.Parameters.AddWithValue("info_id", inventoryInfo.ID);
                     sqliteCommand.Parameters.AddWithValue("code", item.Value.Code);
                     sqliteCommand.Parameters.AddWithValue("description", item.Value.Description);
                     sqliteCommand.Parameters.AddWithValue("unit", item.Value.Unit);
                     sqliteCommand.Parameters.AddWithValue("barcode", item.Value.Barcode);
                     sqliteCommand.Parameters.AddWithValue("quantity", item.Value.Quantity);
+                    sqliteCommand.Parameters.AddWithValue("price", item.Value.Price);
                     sqliteCommand.ExecuteNonQuery();
                 }
                 sqliteTransaction.Commit();
@@ -636,6 +673,8 @@ namespace SimpleInventoryFrontEnd
                     }
                     if (!inventoryInfo.CheckMandatoryFields())
                         throw new Exception("В выбранном файле отсутствуют атрибуты, описывающие инвентаризацию!");
+                    if (inventoryInfo.Version != VERSION)
+                        throw new Exception($"Версия файла выгрузки ({inventoryInfo.Version}) не соответствует версии утилиты ({VERSION})!");
 
                     if (reader.ReadToFollowing("item"))
                     {
@@ -688,6 +727,7 @@ namespace SimpleInventoryFrontEnd
                     writer.WriteProcessingInstruction("xml", "version = '1.0' encoding = 'windows-1251'");
 
                     writer.WriteStartElement("inventory_result");
+                    writer.WriteAttributeString("version", VERSION);
                     writer.WriteAttributeString("company_code", inventoryInfo.CompanyCode);
                     writer.WriteAttributeString("company", inventoryInfo.Company);
                     writer.WriteAttributeString("warehouse_code", inventoryInfo.WarehouseCode);
@@ -779,6 +819,13 @@ namespace SimpleInventoryFrontEnd
             columnUnit.Alignment = DataGridViewContentAlignment.MiddleCenter;
             columnsAppearance.Add("unit", columnUnit);
 
+            DataGridViewColumnAppearance columnPrice = new DataGridViewColumnAppearance();
+            columnPrice.HeaderText = "Цена";
+            columnPrice.Width = 70;
+            columnPrice.Alignment = DataGridViewContentAlignment.MiddleRight;
+            columnPrice.Format = "N3";
+            columnsAppearance.Add("price", columnPrice);
+
             DataGridViewColumnAppearance columnQuantity = new DataGridViewColumnAppearance();
             columnQuantity.HeaderText = "Количество";
             columnQuantity.Width = 70;
@@ -857,7 +904,7 @@ namespace SimpleInventoryFrontEnd
             using (SQLiteCommand sqliteCommand = new SQLiteCommand(sqliteConnection))
             {
                 sqliteCommand.CommandText = @"
-                    SELECT rowid, info_id, code, barcode, description, unit, quantity, quantity_fact 
+                    SELECT rowid, info_id, code, barcode, description, unit, price, quantity, quantity_fact
                     FROM inventory_items
                     WHERE info_id = @info_id
                     ORDER BY description";
